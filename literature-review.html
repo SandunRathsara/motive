@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b09">
+  <meta name="description" content="A one-idea-per-screen visual summary of the adaptive fitness coaching literature review.">
+  <title>The missing loop — visual literature review</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b09;
+      --surface: #101510;
+      --surface-2: #161d16;
+      --surface-3: #1e271e;
+      --line: #2a332a;
+      --line-soft: #1c241d;
+      --ink: #f2f5ee;
+      --muted: #a3ada1;
+      --subtle: #758075;
+      --lime: #c9ef78;
+      --lime-bright: #dcff96;
+      --lime-ink: #16200c;
+      --lime-soft: rgba(201, 239, 120, .10);
+      --blue: #a8c7fa;
+      --blue-soft: rgba(168, 199, 250, .10);
+      --lilac: #cbb8f7;
+      --lilac-soft: rgba(203, 184, 247, .10);
+      --coral: #f2a59c;
+      --coral-soft: rgba(242, 165, 156, .10);
+      --amber: #efc477;
+      --amber-soft: rgba(239, 196, 119, .10);
+      --top: 66px;
+      --bottom: 78px;
+      --pad: clamp(20px, 4.5vw, 60px);
+      --r: 20px;
+      --font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --display: "Avenir Next Condensed", "Arial Narrow", Inter, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(52% 42% at 14% 0%, rgba(201, 239, 120, .075), transparent 70%),
+        radial-gradient(46% 46% at 92% 100%, rgba(168, 199, 250, .055), transparent 72%),
+        radial-gradient(30% 30% at 78% 12%, rgba(203, 184, 247, .035), transparent 70%);
+    }
+    button, a { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .35; }
+    a { color: var(--lime); text-underline-offset: 3px; }
+    p, h1, h2, h3, h4 { margin: 0; }
+    h1, h2, h3, .display { font-family: var(--display); font-weight: 700; }
+    [hidden] { display: none !important; }
+    ::selection { background: var(--lime); color: var(--lime-ink); }
+
+    button:focus-visible, a:focus-visible, summary:focus-visible {
+      outline: 3px solid var(--lime);
+      outline-offset: 3px;
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .skip-link {
+      position: fixed; left: 12px; top: -80px; z-index: 200;
+      padding: 10px 16px; border-radius: 10px;
+      background: var(--lime); color: var(--lime-ink); font-weight: 650; text-decoration: none;
+    }
+    .skip-link:focus { top: 12px; }
+
+    /* ---------- top bar ---------- */
+    .topbar {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 40;
+      height: var(--top);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 var(--pad);
+      border-bottom: 1px solid rgba(42, 51, 42, .55);
+      background: rgba(8, 11, 9, .78);
+      -webkit-backdrop-filter: blur(16px) saturate(1.1);
+      backdrop-filter: blur(16px) saturate(1.1);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      font-family: var(--display);
+      font-size: 1.12rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .brand-mark span { color: var(--lime); }
+    .brand-rule { width: 1px; height: 18px; background: var(--line); flex: 0 0 auto; }
+    .brand-sub {
+      font-size: .78rem;
+      color: var(--muted);
+      letter-spacing: .02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .ghost-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      min-height: 38px; padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(22, 29, 22, .6);
+      color: var(--muted);
+      font-size: .82rem; font-weight: 550;
+      transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .ghost-btn:hover { color: var(--ink); border-color: #3b473b; background: var(--surface-2); }
+    .ghost-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .ghost-btn .kbd { display: none; }
+    @media (min-width: 1000px) {
+      .ghost-btn .kbd {
+        display: inline-block; margin-left: 2px; padding: 1px 5px;
+        border: 1px solid var(--line); border-radius: 5px;
+        font-family: var(--mono); font-size: .64rem; color: var(--subtle);
+      }
+    }
+
+    .progress {
+      position: fixed; inset: 0 0 auto 0; z-index: 50;
+      height: 2px; background: rgba(42, 51, 42, .5);
+      pointer-events: none;
+    }
+    .progress i {
+      display: block; height: 100%; width: 12.5%;
+      background: linear-gradient(90deg, #9fd35c, var(--lime-bright));
+      box-shadow: 0 0 12px rgba(201, 239, 120, .55);
+      transition: width 420ms cubic-bezier(.2, .7, .2, 1);
+    }
+
+    /* ---------- deck ---------- */
+    .deck {
+      position: fixed;
+      inset: var(--top) 0 var(--bottom);
+      z-index: 10;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 300ms ease, transform 420ms cubic-bezier(.2, .7, .2, 1), visibility 0s 420ms;
+    }
+    .slide.is-active {
+      visibility: visible;
+      opacity: 1;
+      transform: none;
+      transition: opacity 360ms ease, transform 460ms cubic-bezier(.2, .7, .2, 1), visibility 0s 0s;
+    }
+    .slide.is-before { transform: translateY(-22px); }
+    .slide:focus, .slide:focus-visible { outline: none; }
+    .slide-inner {
+      width: min(1180px, 100%);
+      min-height: 100%;
+      margin: 0 auto;
+      padding: clamp(22px, 4.6vh, 54px) var(--pad) clamp(26px, 4vh, 46px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .slide-inner > * + * { margin-top: clamp(16px, 2.6vh, 26px); }
+
+    .kicker {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--subtle);
+    }
+    .kicker::before {
+      content: ""; width: 22px; height: 1px; background: var(--lime); flex: 0 0 auto;
+    }
+    .kicker .k-num { color: #556355; letter-spacing: .08em; }
+
+    .headline {
+      font-size: clamp(2.4rem, 7.6vw, 6.2rem);
+      line-height: .93;
+      letter-spacing: -.045em;
+      font-weight: 700;
+      text-wrap: balance;
+    }
+    .headline em {
+      font-style: normal;
+      color: var(--lime);
+    }
+    .headline .dim { color: var(--subtle); }
+    .slide--dense .headline { font-size: clamp(2.3rem, 5.2vw, 4.6rem); }
+    .lede {
+      max-width: 46ch;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.5vw, 1.22rem);
+      line-height: 1.45;
+      text-wrap: pretty;
+    }
+    .lede strong { color: var(--ink); font-weight: 600; }
+
+    .reveal { opacity: 1; }
+    .slide.is-active .reveal {
+      animation: rise 560ms cubic-bezier(.2, .7, .2, 1) both;
+      animation-delay: calc(var(--d, 0) * 1ms);
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* ---------- footer controls ---------- */
+    .controls {
+      position: fixed;
+      inset: auto 0 0 0;
+      z-index: 40;
+      height: var(--bottom);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 var(--pad);
+      border-top: 1px solid rgba(42, 51, 42, .45);
+      background: rgba(8, 11, 9, .82);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+    }
+    .now { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+    .now-num {
+      font-family: var(--mono); font-size: .72rem; color: var(--lime);
+      letter-spacing: .08em; white-space: nowrap;
+    }
+    .now-title {
+      font-size: .84rem; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dots { display: flex; align-items: center; gap: 7px; }
+    .dot {
+      width: 9px; height: 9px; padding: 0;
+      border: 0; border-radius: 999px;
+      background: var(--line);
+      transition: width 260ms ease, background 200ms ease;
+    }
+    .dot:hover { background: #4a584a; }
+    .dot[aria-current="true"] { width: 26px; background: var(--lime); }
+    .nav-group { display: flex; align-items: center; gap: 8px; }
+    .nav-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      height: 42px; min-width: 42px; padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: .84rem; font-weight: 600;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .nav-btn:hover:not(:disabled) { background: var(--surface-2); border-color: #3b473b; }
+    .nav-btn.next { background: var(--lime); border-color: var(--lime); color: var(--lime-ink); }
+    .nav-btn.next:hover:not(:disabled) { background: var(--lime-bright); border-color: var(--lime-bright); }
+    .nav-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .nav-label { display: inline; }
+    @media (max-width: 720px) {
+      .nav-label { display: none; }
+      .nav-btn { padding: 0; min-width: 44px; }
+      .now-title { display: none; }
+      .dots { gap: 6px; }
+      .dot { width: 8px; height: 8px; }
+      .dot[aria-current="true"] { width: 18px; }
+    }
+    @media (max-width: 360px) {
+      .topbar .btn-text { display: none; }
+      .ghost-btn { padding: 0; width: 38px; justify-content: center; }
+      .brand-mark { font-size: 1rem; letter-spacing: .12em; }
+    }
+    @media (max-width: 420px) {
+      .dots { gap: 4px; }
+      .dot { width: 6px; height: 6px; }
+      .dot[aria-current="true"] { width: 14px; }
+      .now-num { font-size: .66rem; }
+      .controls { gap: 8px; }
+    }
+
+    /* ---------- shared components ---------- */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+      gap: clamp(24px, 4vw, 60px);
+      align-items: center;
+    }
+    .stack { display: flex; flex-direction: column; gap: clamp(14px, 2.2vh, 22px); }
+    .punch {
+      font-family: var(--display);
+      font-size: clamp(1.22rem, 2.5vw, 1.8rem);
+      font-weight: 700; letter-spacing: -.025em; line-height: 1.15;
+      color: var(--muted);
+    }
+    .punch b { color: var(--coral); font-weight: 700; }
+    .punch .lime { color: var(--lime); }
+    .foot {
+      display: flex; align-items: flex-start; gap: 10px;
+      max-width: 76ch; font-size: .72rem; line-height: 1.5; color: var(--subtle);
+    }
+    .foot::before {
+      content: ""; width: 14px; height: 1px; margin-top: .7em;
+      background: var(--line); flex: 0 0 auto;
+    }
+    .foot b { color: var(--muted); font-weight: 600; }
+    .example-flag {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px;
+      font-family: var(--mono); font-size: .58rem; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--subtle);
+    }
+    .example-flag::before {
+      content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--amber);
+    }
+
+    /* ---------- screen 1: ring ---------- */
+    .verdict-visual {
+      display: flex; flex-direction: column; align-items: center;
+      gap: clamp(14px, 2.4vh, 22px); width: 100%;
+    }
+    .ring { position: relative; width: clamp(200px, 23vw, 292px); aspect-ratio: 1; }
+    .ring svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .ring-track { fill: none; stroke: var(--line-soft); stroke-width: 1.5; }
+    .ring-seg { fill: none; stroke-width: 13; stroke-linecap: round; }
+    .ring-center {
+      position: absolute; inset: 0;
+      display: grid; place-content: center; text-align: center; gap: 2px;
+    }
+    .ring-num {
+      font-family: var(--display); font-size: clamp(2.8rem, 5.6vw, 4.2rem);
+      line-height: .85; font-weight: 700; letter-spacing: -.05em; color: var(--lime);
+    }
+    .ring-cap {
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .13em;
+      text-transform: uppercase; color: var(--subtle);
+    }
+    .pillars {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px;
+      width: 100%; max-width: 300px;
+    }
+    .pillar {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .78rem; color: var(--muted);
+    }
+    .pillar i { width: 7px; height: 7px; border-radius: 2px; background: var(--tone); flex: 0 0 auto; }
+    .pillar.miss { color: var(--coral); }
+    .pillar.miss i { background: transparent; border: 1px dashed var(--coral); }
+
+    /* ---------- screen 2: checks + zero ---------- */
+    .gap-grid {
+      display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .6fr);
+      gap: clamp(16px, 2.6vw, 32px); align-items: stretch;
+    }
+    .checks { display: flex; flex-direction: column; gap: 9px; }
+    .check {
+      display: flex; align-items: center; gap: 13px;
+      padding: 13px 15px; border: 1px solid var(--line-soft);
+      border-radius: 14px; background: var(--surface);
+    }
+    .check-ico {
+      width: 27px; height: 27px; border-radius: 50%; flex: 0 0 auto;
+      display: grid; place-items: center;
+      background: var(--lime-soft); color: var(--lime);
+    }
+    .check-ico svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .check-text { flex: 1; font-size: clamp(.92rem, 1.35vw, 1.04rem); font-weight: 550; line-height: 1.25; }
+    .check-tag {
+      font-family: var(--mono); font-size: .57rem; letter-spacing: .09em;
+      text-transform: uppercase; color: var(--subtle); white-space: nowrap;
+    }
+    .check.miss { border-color: rgba(242, 165, 156, .32); background: var(--coral-soft); }
+    .check.miss .check-ico { background: var(--coral); color: #2a100c; }
+    .check.miss .check-tag { color: var(--coral); }
+    .stat {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: clamp(18px, 2.6vw, 28px);
+      border: 1px solid var(--line); border-radius: var(--r);
+      background: linear-gradient(165deg, var(--surface-2), var(--surface) 70%);
+    }
+    .stat-num {
+      font-family: var(--display); font-weight: 700;
+      font-size: clamp(4rem, 8vw, 6.4rem); line-height: .82;
+      letter-spacing: -.06em; color: var(--coral);
+    }
+    .stat-label { margin-top: 14px; font-size: clamp(.84rem, 1.1vw, .95rem); line-height: 1.4; color: var(--muted); max-width: 19ch; }
+    .stat-label b { color: var(--ink); font-weight: 600; }
+
+    /* ---------- screen 3: contenders ---------- */
+    .contenders { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .contender {
+      position: relative; overflow: hidden;
+      padding: 16px 17px 15px 20px;
+      border: 1px solid var(--line); border-radius: 16px;
+      background: var(--surface);
+    }
+    .contender::before {
+      content: ""; position: absolute; inset: 0 auto 0 0;
+      width: 3px; background: var(--tone);
+    }
+    .contender-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .contender-tag {
+      font-family: var(--mono); font-size: .57rem; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--tone);
+    }
+    .contender-idx { font-family: var(--mono); font-size: .6rem; color: var(--subtle); }
+    .contender-name {
+      margin-top: 7px; font-family: var(--display);
+      font-size: clamp(1.3rem, 2.2vw, 1.62rem); font-weight: 700;
+      letter-spacing: -.025em; line-height: 1.02;
+    }
+    .contender-copy { margin-top: 9px; display: flex; flex-direction: column; gap: 4px; font-size: .84rem; line-height: 1.32; }
+    .contender-copy span { display: flex; gap: 7px; }
+    .contender-copy b { font-weight: 700; flex: 0 0 auto; }
+    .contender-copy .good { color: var(--ink); }
+    .contender-copy .good b { color: var(--lime); }
+    .contender-copy .bad { color: var(--muted); }
+    .contender-copy .bad b { color: var(--coral); }
+
+    /* ---------- screen 4: three truths ---------- */
+    .truth-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .truth-head h2 {
+      font-family: var(--mono); font-size: .62rem; letter-spacing: .13em;
+      text-transform: uppercase; color: var(--subtle); font-weight: 500;
+    }
+    .truths { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; }
+    .truth {
+      padding: 17px 17px 15px; border: 1px solid var(--line);
+      border-radius: 16px; background: var(--surface);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .truth-app { font-size: .8rem; font-weight: 600; color: var(--muted); }
+    .truth-kcal {
+      font-family: var(--display); font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+      font-weight: 700; letter-spacing: -.045em; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .truth-unit { font-size: .62rem; color: var(--subtle); font-family: var(--mono); font-weight: 400; letter-spacing: .1em; }
+    .truth-note { margin-top: 7px; font-size: .7rem; line-height: 1.35; color: var(--subtle); border-top: 1px solid var(--line-soft); padding-top: 7px; }
+
+    /* ---------- screen 5: evidence ---------- */
+    .stat-inline {
+      display: flex; align-items: center; gap: clamp(14px, 3vw, 26px);
+      flex-wrap: wrap;
+      padding: 14px 20px; border: 1px solid var(--line);
+      border-radius: 16px; background: linear-gradient(100deg, var(--surface-2), var(--surface));
+    }
+    .stat-inline b {
+      font-family: var(--display); font-size: clamp(2rem, 4.2vw, 3.1rem);
+      font-weight: 700; letter-spacing: -.045em; line-height: 1; color: var(--amber);
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    .stat-inline p { max-width: 56ch; font-size: .8rem; line-height: 1.45; color: var(--muted); }
+    .stat-inline p b { font-family: var(--font); font-size: inherit; color: var(--ink); letter-spacing: 0; font-weight: 600; }
+    .evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .ev-col { padding: 15px 17px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .ev-col h3 {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--tone); font-weight: 500;
+    }
+    .ev-col h3::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--tone); }
+    .ev-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .ev-list li { display: flex; gap: 8px; align-items: baseline; font-size: .9rem; line-height: 1.3; color: var(--muted); }
+    .ev-list li::before { content: "—"; color: var(--tone); flex: 0 0 auto; font-size: .8rem; }
+    .ev-col.yes .ev-list li { color: var(--ink); }
+
+    /* ---------- screen 6: formula ---------- */
+    .formula-wrap { padding: clamp(18px, 3vw, 30px); border: 1px solid var(--line); border-radius: var(--r); background: rgba(22, 29, 22, .5); }
+    .formula { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .f-chip {
+      padding: 11px 15px; border: 1px solid var(--line); border-radius: 11px;
+      background: var(--surface); font-family: var(--display);
+      font-size: clamp(1.1rem, 2.3vw, 1.65rem); font-weight: 700;
+      letter-spacing: -.02em; line-height: 1;
+    }
+    .f-op { color: var(--subtle); font-family: var(--mono); font-size: .9rem; }
+    .f-result { background: var(--lime); border-color: var(--lime); color: var(--lime-ink); }
+    .formula-note { margin-top: 16px; font-size: clamp(1rem, 1.8vw, 1.3rem); line-height: 1.4; color: var(--muted); }
+    .formula-note strong { color: var(--ink); font-weight: 600; }
+
+    /* ---------- screen 7: passes ---------- */
+    .passes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; align-items: stretch; }
+    .pass {
+      position: relative; padding: 16px 17px 17px;
+      border: 1px solid var(--line); border-radius: 16px; background: var(--surface);
+    }
+    .pass::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--tone); border-radius: 16px 16px 0 0; }
+    .pass-code { font-family: var(--mono); font-size: .63rem; letter-spacing: .14em; color: var(--tone); }
+    .pass h3 { margin-top: 7px; font-size: clamp(1.1rem, 1.8vw, 1.35rem); letter-spacing: -.02em; line-height: 1.1; }
+    .pass ul { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .pass li { display: flex; gap: 8px; font-size: .82rem; line-height: 1.35; color: var(--muted); }
+    .pass li::before { content: ""; width: 5px; height: 5px; margin-top: 6px; border-radius: 50%; background: var(--tone); flex: 0 0 auto; }
+
+    /* ---------- screen 8: moves ---------- */
+    .moves { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+    .move {
+      display: flex; align-items: center; gap: clamp(12px, 2.6vw, 24px);
+      padding: clamp(11px, 1.7vh, 17px) 0; border-bottom: 1px solid var(--line);
+    }
+    .move-num { font-family: var(--mono); font-size: .66rem; color: var(--subtle); flex: 0 0 22px; letter-spacing: .06em; }
+    .move-text {
+      font-family: var(--display); font-size: clamp(1.25rem, 2.9vw, 1.95rem);
+      font-weight: 700; letter-spacing: -.025em; line-height: 1.08;
+    }
+    .move-text em { font-style: normal; color: var(--lime); }
+    .closing { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    /* ---------- dialogs ---------- */
+    dialog { border: 0; padding: 0; background: transparent; color: var(--ink); }
+    dialog::backdrop {
+      background: rgba(4, 6, 4, .76);
+      -webkit-backdrop-filter: blur(9px);
+      backdrop-filter: blur(9px);
+    }
+    dialog[open]::backdrop { animation: fade .24s ease both; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+    .overview-panel {
+      width: min(1060px, calc(100vw - 28px));
+      max-height: calc(100dvh - 40px);
+      display: flex; flex-direction: column;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 22px; overflow: hidden;
+      box-shadow: 0 30px 100px rgba(0, 0, 0, .62);
+    }
+    dialog[open] .overview-panel { animation: pop .26s cubic-bezier(.2, .7, .2, 1) both; }
+    @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+
+    .panel-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+      padding: 20px 22px 16px; border-bottom: 1px solid var(--line-soft);
+    }
+    .panel-head h2 { font-family: var(--display); font-size: 1.5rem; letter-spacing: -.02em; line-height: 1.05; }
+    .panel-head p { margin-top: 5px; font-size: .78rem; color: var(--subtle); }
+    .x-btn {
+      width: 36px; height: 36px; flex: 0 0 auto;
+      display: grid; place-items: center;
+      border: 1px solid var(--line); border-radius: 10px;
+      background: var(--surface-2); color: var(--muted);
+    }
+    .x-btn:hover { color: var(--ink); border-color: #435143; }
+    .x-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+    .ov-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px;
+      padding: 16px 22px 22px; overflow-y: auto;
+    }
+    .ov-tile {
+      display: flex; flex-direction: column; gap: 7px; min-height: 128px;
+      text-align: left; padding: 14px;
+      border: 1px solid var(--line); border-radius: 13px;
+      background: var(--bg);
+      transition: border-color 160ms ease, background 160ms ease;
+    }
+    .ov-tile:hover { border-color: #455245; background: var(--surface-2); }
+    .ov-tile[aria-current="true"] { border-color: rgba(201, 239, 120, .6); background: var(--lime-soft); }
+    .ov-num { font-family: var(--mono); font-size: .6rem; letter-spacing: .1em; color: var(--lime); }
+    .ov-title { font-family: var(--display); font-size: 1.06rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.08; }
+    .ov-sub { margin-top: auto; font-size: .7rem; line-height: 1.35; color: var(--subtle); }
+
+    dialog.sources {
+      position: fixed; inset: 0 0 0 auto; margin: 0;
+      width: min(540px, 100vw); max-width: none;
+      height: 100dvh; max-height: none;
+      overflow: visible;
+    }
+    .sources-panel {
+      height: 100%; display: flex; flex-direction: column;
+      background: var(--surface); border-left: 1px solid var(--line);
+      box-shadow: -24px 0 80px rgba(0, 0, 0, .5);
+    }
+    dialog[open] .sources-panel { animation: slideIn .28s cubic-bezier(.2, .7, .2, 1) both; }
+    @keyframes slideIn { from { transform: translateX(26px); opacity: .5; } to { transform: none; opacity: 1; } }
+
+    .src-body {
+      padding: 18px 22px 30px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+    .src-section h3 {
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .13em;
+      text-transform: uppercase; color: var(--subtle); font-weight: 500; margin-bottom: 9px;
+    }
+    .class-list { display: flex; flex-direction: column; gap: 8px; }
+    .class-row { display: flex; align-items: flex-start; gap: 9px; font-size: .8rem; line-height: 1.4; color: var(--muted); }
+    .class-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; flex: 0 0 auto; background: var(--tone); }
+    .class-row b { color: var(--ink); font-weight: 600; }
+    .src-group { display: flex; flex-direction: column; }
+    .src-link {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+      padding: 9px 0; border-bottom: 1px solid var(--line-soft);
+      color: var(--ink); text-decoration: none; font-size: .83rem; line-height: 1.35;
+    }
+    .src-link:hover { color: var(--lime); }
+    .src-link .tag {
+      font-family: var(--mono); font-size: .55rem; letter-spacing: .06em;
+      color: var(--subtle); white-space: nowrap;
+    }
+    .src-note {
+      padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px;
+      background: var(--bg); font-size: .74rem; line-height: 1.5; color: var(--subtle);
+    }
+    .src-note b { color: var(--muted); font-weight: 600; }
+    .src-cta {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 42px; padding: 0 16px; border-radius: 10px;
+      background: var(--lime); color: var(--lime-ink);
+      font-size: .84rem; font-weight: 650; text-decoration: none;
+    }
+    .src-cta:hover { background: var(--lime-bright); color: var(--lime-ink); }
+
+    /* ---------- responsive ---------- */
+    @media (max-width: 960px) {
+      .split { grid-template-columns: 1fr; gap: 22px; }
+      .gap-grid { grid-template-columns: 1fr; }
+      .stat { flex-direction: row; align-items: center; gap: 18px; padding: 16px 18px; }
+      .stat-num { font-size: 3.6rem; }
+      .stat-label { margin-top: 0; max-width: none; }
+      .passes { grid-template-columns: 1fr; gap: 8px; }
+      .pass { display: block; padding: 11px 14px; }
+      .pass::before { inset: 0 auto 0 0; width: 2px; height: auto; border-radius: 16px 0 0 16px; }
+      .pass h3 { margin-top: 3px; }
+      .pass ul { margin-top: 7px; gap: 5px; }
+      .ov-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 720px) {
+      :root { --top: 58px; --bottom: 72px; }
+      .brand-sub { display: none; }
+      .brand-rule { display: none; }
+      .ghost-btn { padding: 0 10px; font-size: .76rem; }
+      .topbar-actions { gap: 6px; }
+      .contenders { grid-template-columns: 1fr; gap: 9px; }
+      .contender { padding: 12px 15px 11px 18px; }
+      .truths { grid-template-columns: 1fr; gap: 9px; }
+      .truth { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+      .truth-kcal { margin-left: auto; }
+      .truth-note { flex: 1 0 100%; margin-top: 4px; }
+      .evidence-grid { grid-template-columns: 1fr; gap: 9px; }
+      .headline { max-width: 100%; }
+      .slide-inner { padding-top: 20px; padding-bottom: 20px; }
+      .slide-inner > * + * { margin-top: 13px; }
+      .ring { width: 186px; }
+      .ring-num { font-size: 2.6rem; }
+      .pillars { max-width: 300px; gap: 6px 14px; }
+      .formula { gap: 7px; }
+      .f-chip { padding: 9px 12px; }
+      .overview-panel { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); border-radius: 18px; }
+      .panel-head { padding: 16px 16px 13px; }
+      .ov-grid { padding: 12px 16px 16px; gap: 8px; }
+      .ov-tile { min-height: 108px; padding: 12px; }
+      .ov-title { font-size: .95rem; }
+      .src-body { padding: 16px 18px 26px; }
+      .moves { border-top: 1px solid var(--line); }
+      .move-text { font-size: 1.28rem; }
+    }
+    @media (max-height: 760px) and (min-width: 900px) {
+      .headline { font-size: clamp(2.4rem, 6.2vw, 5rem); }
+      .slide-inner { padding-top: 22px; padding-bottom: 20px; }
+      .slide-inner > * + * { margin-top: 14px; }
+      .ring { width: clamp(180px, 20vw, 240px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#deck">Skip to the deck</a>
+
+  <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">Motive<span>.</span></div>
+      <span class="brand-rule" aria-hidden="true"></span>
+      <span class="brand-sub">Evidence review · 8 screens · one idea each</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="ghost-btn" type="button" data-open="overview" aria-haspopup="dialog" aria-label="All screens">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="btn-text">All screens</span> <span class="kbd">G</span>
+      </button>
+      <button class="ghost-btn" type="button" data-open="sources" aria-haspopup="dialog" aria-label="Sources">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1 0l-2 2A5 5 0 0 0 12 20.1l1.1-1.1"/></svg>
+        <span class="btn-text">Sources</span> <span class="kbd">S</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="deck" id="deck" aria-live="off">
+    <section class="slide" id="screen-1" aria-labelledby="h-1" data-title="The verdict" data-short="22 products. 6 stacks. 0 complete loops.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">Verdict <span class="k-num">/ 01</span></p>
+        <div class="split">
+          <div class="stack">
+            <h1 class="headline reveal" id="h-1" style="--d:70">Assembled.<br><em>Never owned.</em></h1>
+            <p class="lede reveal" style="--d:150">22 products. 6 stacks. <strong>0 complete loops.</strong></p>
+          </div>
+          <div class="verdict-visual reveal" style="--d:210">
+            <div class="ring">
+              <svg viewBox="0 0 320 320" role="img" aria-label="A four-part loop with the reconciliation link broken">
+                <circle class="ring-track" cx="160" cy="160" r="128"/>
+                <path class="ring-seg" d="M160 32 A128 128 0 0 1 287.3 146.6" stroke="#c9ef78"/>
+                <path class="ring-seg" d="M287.3 146.6 A128 128 0 0 1 186.6 285.2" stroke="#a8c7fa"/>
+                <path class="ring-seg" d="M186.6 285.2 A128 128 0 0 1 38.3 199.6" stroke="#cbb8f7"/>
+                <path class="ring-seg" d="M38.3 199.6 A128 128 0 0 1 107.9 43.1" stroke="#f2a59c" stroke-dasharray="7 11"/>
+              </svg>
+              <div class="ring-center" aria-hidden="true">
+                <span class="ring-num">0</span>
+                <span class="ring-cap">complete loops</span>
+              </div>
+            </div>
+            <div class="pillars" aria-hidden="true">
+              <span class="pillar" style="--tone:var(--lime)"><i></i>Capture</span>
+              <span class="pillar" style="--tone:var(--blue)"><i></i>Train</span>
+              <span class="pillar" style="--tone:var(--lilac)"><i></i>Sense</span>
+              <span class="pillar miss"><i></i>Reconcile</span>
+            </div>
+          </div>
+        </div>
+        <p class="foot reveal" style="--d:300"><b>Basis:</b> documented capabilities across 22 products and six realistic stacks. The gap is the product, not the feature list.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="screen-2" aria-labelledby="h-2" data-title="The gap" data-short="Capture is solved. Joining is not.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">The gap <span class="k-num">/ 02</span></p>
+        <h1 class="headline reveal" id="h-2" style="--d:70">Capture got easy.<br><em>Joining didn't.</em></h1>
+        <div class="gap-grid">
+          <div class="checks reveal" style="--d:150">
+            <div class="check">
+              <span class="check-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
+              <span class="check-text">Photo, barcode, voice</span>
+              <span class="check-tag">Commodity</span>
+            </div>
+            <div class="check">
+              <span class="check-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
+              <span class="check-text">Two-tap set logging</span>
+              <span class="check-tag">Entry ticket</span>
+            </div>
+            <div class="check">
+              <span class="check-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
+              <span class="check-text">A readiness score</span>
+              <span class="check-tag">Everywhere</span>
+            </div>
+            <div class="check miss">
+              <span class="check-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+              <span class="check-text">One answer you can trust</span>
+              <span class="check-tag">Missing</span>
+            </div>
+          </div>
+          <div class="stat reveal" style="--d:230">
+            <span class="stat-num">0</span>
+            <span class="stat-label"><b>of 22 reviewed apps</b> show you which number won.</span>
+          </div>
+        </div>
+        <p class="foot reveal" style="--d:320"><b>Basis:</b> vendor documentation. None labels every number with source, time and confidence.</p>
+      </div>
+    </section>
+
+    <section class="slide slide--dense" id="screen-3" aria-labelledby="h-3" data-title="Near misses" data-short="Four products matter. Each fails differently.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">Near misses <span class="k-num">/ 03</span></p>
+        <h1 class="headline reveal" id="h-3" style="--d:70">Four come close.<br><em>Each fails differently.</em></h1>
+        <div class="contenders">
+          <article class="contender reveal" style="--tone:var(--blue);--d:150">
+            <div class="contender-top"><span class="contender-tag">Closest on scope</span><span class="contender-idx">01</span></div>
+            <h2 class="contender-name">Google Health Coach</h2>
+            <p class="contender-copy">
+              <span class="good"><b>+</b> Food, watch and a weekly plan in one app.</span>
+              <span class="bad"><b>−</b> Fitbit or Pixel only. $99/yr. Not inspectable.</span>
+            </p>
+          </article>
+          <article class="contender reveal" style="--tone:var(--lime);--d:210">
+            <div class="contender-top"><span class="contender-tag">Closest on adaptation</span><span class="contender-idx">02</span></div>
+            <h2 class="contender-name">MacroFactor</h2>
+            <p class="contender-copy">
+              <span class="good"><b>+</b> The best weekly nutrition math.</span>
+              <span class="bad"><b>−</b> Its training app has “no shared coaching features”.</span>
+            </p>
+          </article>
+          <article class="contender reveal" style="--tone:var(--lilac);--d:270">
+            <div class="contender-top"><span class="contender-tag">Closest on buyer</span><span class="contender-idx">03</span></div>
+            <h2 class="contender-name">Ladder</h2>
+            <p class="contender-copy">
+              <span class="good"><b>+</b> $180/yr. Human coach plus food log.</span>
+              <span class="bad"><b>−</b> No physiological adaptation.</span>
+            </p>
+          </article>
+          <article class="contender reveal" style="--tone:var(--amber);--d:330">
+            <div class="contender-top"><span class="contender-tag">Biggest risk</span><span class="contender-idx">04</span></div>
+            <h2 class="contender-name">Apple</h2>
+            <p class="contender-copy">
+              <span class="good"><b>+</b> Owns the health data and the watch.</span>
+              <span class="bad"><b>−</b> No food diary. Still.</span>
+            </p>
+          </article>
+        </div>
+        <p class="foot reveal" style="--d:400"><b>Basis:</b> vendor documentation, help centres and pricing pages, checked 1 November 2026.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="screen-4" aria-labelledby="h-4" data-title="The stack trap" data-short="One day, three calorie totals, no referee.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">The stack trap <span class="k-num">/ 04</span></p>
+        <h1 class="headline reveal" id="h-4" style="--d:70">One day.<br><em>Three truths.</em></h1>
+        <div class="truth-head reveal" style="--d:140">
+          <h2>Same meals · same day</h2>
+          <span class="example-flag">Illustrative example</span>
+        </div>
+        <div class="truths">
+          <div class="truth reveal" style="--d:180">
+            <span class="truth-app">MacroFactor</span>
+            <p class="truth-kcal">2,140 <span class="truth-unit">kcal</span></p>
+            <p class="truth-note">A manual entry can suppress the whole day’s sync.</p>
+          </div>
+          <div class="truth reveal" style="--d:240">
+            <span class="truth-app">MyFitnessPal</span>
+            <p class="truth-kcal">2,410 <span class="truth-unit">kcal</span></p>
+            <p class="truth-note">Exercise imports expire at midnight.</p>
+          </div>
+          <div class="truth reveal" style="--d:300">
+            <span class="truth-app">Apple Health</span>
+            <p class="truth-kcal">1,980 <span class="truth-unit">kcal</span></p>
+            <p class="truth-note">One preferred source per metric. No merge.</p>
+          </div>
+        </div>
+        <p class="punch reveal" style="--d:360">No app can say <b>which number won.</b></p>
+        <p class="foot reveal" style="--d:430"><b>Basis:</b> source-priority and same-day import rules in each vendor’s documentation. Totals illustrate the documented conflict, not measured data.</p>
+      </div>
+    </section>
+
+    <section class="slide slide--dense" id="screen-5" aria-labelledby="h-5" data-title="The evidence" data-short="Speed helps. Precision claims don't.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">The evidence <span class="k-num">/ 05</span></p>
+        <h1 class="headline reveal" id="h-5" style="--d:70">Speed helps.<br><em>Precision claims don't.</em></h1>
+        <div class="stat-inline reveal" style="--d:150">
+          <b>−179 kcal</b>
+          <p>Photo-based estimates under-report energy by this much more than traditional records. Against lab measurement, the gap is <b>−448 kcal</b>.</p>
+        </div>
+        <div class="evidence-grid">
+          <div class="ev-col yes reveal" style="--tone:var(--lime);--d:230">
+            <h3>Supported</h3>
+            <ul class="ev-list">
+              <li>Less burden, better adherence</li>
+              <li>Trends beat single days</li>
+              <li>Deterministic, inspectable math</li>
+            </ul>
+          </div>
+          <div class="ev-col no reveal" style="--tone:var(--coral);--d:290">
+            <h3>Not supported</h3>
+            <ul class="ev-list">
+              <li>Photo calories as precision</li>
+              <li>Daily HRV verdicts</li>
+              <li>AI as a better coach</li>
+            </ul>
+          </div>
+        </div>
+        <p class="foot reveal" style="--d:360"><b>Basis:</b> peer-reviewed reviews and meta-analyses. The photo-app meal test is a conference abstract, not peer reviewed. Full citations in Sources.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="screen-6" aria-labelledby="h-6" data-title="The opening" data-short="Cheapest input. One traceable change.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">The opening <span class="k-num">/ 06</span></p>
+        <h1 class="headline reveal" id="h-6" style="--d:70">Cheapest input.<br><em>One traceable change.</em></h1>
+        <div class="formula-wrap reveal" style="--d:160">
+          <div class="formula" aria-label="Few taps plus weight trend plus one visible change equals trust">
+            <span class="f-chip">Few taps</span>
+            <span class="f-op" aria-hidden="true">+</span>
+            <span class="f-chip">Weight trend</span>
+            <span class="f-op" aria-hidden="true">+</span>
+            <span class="f-chip">One visible change</span>
+            <span class="f-op" aria-hidden="true">=</span>
+            <span class="f-chip f-result">Trust</span>
+          </div>
+          <p class="formula-note"><strong>Not more data.</strong> Less, reconciled.</p>
+        </div>
+        <p class="foot reveal" style="--d:260"><b>Basis:</b> independent evidence on monitoring burden, plus the report’s product inference. This is the defensible gap.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="screen-7" aria-labelledby="h-7" data-title="Build order" data-short="Clear the bar, then differentiate, then prove it.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">Build order <span class="k-num">/ 07</span></p>
+        <h1 class="headline reveal" id="h-7" style="--d:70">Earn trust<br><em>in three passes.</em></h1>
+        <div class="passes">
+          <div class="pass reveal" style="--tone:var(--lime);--d:150">
+            <span class="pass-code">P0 · PROVE THE LOOP</span>
+            <h3>Be credible</h3>
+            <ul>
+              <li>One-picker food capture</li>
+              <li>Three taps per set</li>
+              <li>Weekly target, math shown</li>
+              <li>HealthKit with provenance</li>
+            </ul>
+          </div>
+          <div class="pass reveal" style="--tone:var(--blue);--d:210">
+            <span class="pass-code">P1 · BE DIFFERENT</span>
+            <h3>Be the referee</h3>
+            <ul>
+              <li>Source on every number</li>
+              <li>Explain in three sentences</li>
+              <li>Ask before merging</li>
+              <li>Fixed safety hand-off</li>
+            </ul>
+          </div>
+          <div class="pass reveal" style="--tone:var(--lilac);--d:270">
+            <span class="pass-code">P2 · BE DEFENSIBLE</span>
+            <h3>Prove the burden</h3>
+            <ul>
+              <li>Taps per day</li>
+              <li>Seconds per day</li>
+              <li>Days logged</li>
+              <li>Trend error</li>
+            </ul>
+          </div>
+        </div>
+        <p class="foot reveal" style="--d:340"><b>Basis:</b> the report’s build order. P0 clears the bar; P1 differentiates; P2 proves it.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="screen-8" aria-labelledby="h-8" data-title="The bet" data-short="Don't out-feature them. Out-explain them.">
+      <div class="slide-inner">
+        <p class="kicker reveal" style="--d:0">The bet <span class="k-num">/ 08</span></p>
+        <h1 class="headline reveal" id="h-8" style="--d:70">Don’t out-feature.<br><em>Out-explain.</em></h1>
+        <div class="moves reveal" style="--d:160">
+          <div class="move">
+            <span class="move-num">01</span>
+            <p class="move-text">Prove burden, <em>not accuracy.</em></p>
+          </div>
+          <div class="move">
+            <span class="move-num">02</span>
+            <p class="move-text">Show one change, <em>with receipts.</em></p>
+          </div>
+          <div class="move">
+            <span class="move-num">03</span>
+            <p class="move-text">Own the diary <em>Apple won’t build.</em></p>
+          </div>
+        </div>
+        <div class="closing reveal" style="--d:280">
+          <a class="src-cta" href="reports/Adaptive%20fitness%20coaching%20app%20landscape.md" target="_blank" rel="noopener">Read the full review</a>
+          <button class="ghost-btn" type="button" data-open="sources">Sources &amp; evidence classes</button>
+        </div>
+        <p class="foot reveal" style="--d:360"><b>Reminder:</b> the loop is the product. Everything else is a feature.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="controls">
+    <div class="now">
+      <span class="now-num" id="nowNum">01 / 08</span>
+      <span class="now-title" id="nowTitle">The verdict</span>
+    </div>
+    <div class="dots" id="dots" role="group" aria-label="Screens"></div>
+    <div class="nav-group">
+      <button class="nav-btn prev" id="prevBtn" type="button" aria-label="Previous screen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        <span class="nav-label">Back</span>
+      </button>
+      <button class="nav-btn next" id="nextBtn" type="button" aria-label="Next screen">
+        <span class="nav-label">Next</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="sr-only" id="announcer" aria-live="polite"></div>
+
+  <dialog class="overview" id="overviewDialog" aria-labelledby="ovTitle">
+    <div class="overview-panel">
+      <div class="panel-head">
+        <div>
+          <h2 id="ovTitle">All screens</h2>
+          <p>Pick any screen. Nothing auto-advances.</p>
+        </div>
+        <button class="x-btn" type="button" data-close aria-label="Close all screens">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="ov-grid" id="ovGrid"></div>
+    </div>
+  </dialog>
+
+  <dialog class="sources" id="sourcesDialog" aria-labelledby="srcTitle">
+    <div class="sources-panel">
+      <div class="panel-head">
+        <div>
+          <h2 id="srcTitle">Sources</h2>
+          <p>Research date · 1 November 2026</p>
+        </div>
+        <button class="x-btn" type="button" data-close aria-label="Close sources">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="src-body">
+        <section class="src-section">
+          <h3>How to read the evidence</h3>
+          <div class="class-list">
+            <div class="class-row" style="--tone:var(--lime)"><span class="class-dot"></span><span><b>Documented capability</b> — what the vendor’s own help centre specifies.</span></div>
+            <div class="class-row" style="--tone:var(--blue)"><span class="class-dot"></span><span><b>Vendor claim</b> — marketing, with no published method.</span></div>
+            <div class="class-row" style="--tone:var(--amber)"><span class="class-dot"></span><span><b>Independent evidence</b> — peer-reviewed study or lab test.</span></div>
+            <div class="class-row" style="--tone:var(--coral)"><span class="class-dot"></span><span><b>Inference</b> — the report’s reasoning, labelled as such.</span></div>
+          </div>
+        </section>
+
+        <section class="src-section">
+          <h3>The full review</h3>
+          <a class="src-cta" href="reports/Adaptive%20fitness%20coaching%20app%20landscape.md" target="_blank" rel="noopener">Open the report (Markdown)</a>
+        </section>
+
+        <section class="src-section">
+          <h3>Competitors</h3>
+          <div class="src-group">
+            <a class="src-link" href="https://blog.google/products-and-platforms/products/google-health/google-health-coach/" target="_blank" rel="noopener">Google Health Coach <span class="tag">Announcement</span></a>
+            <a class="src-link" href="https://macrofactor.com/workouts/" target="_blank" rel="noopener">MacroFactor Workouts · no shared coaching <span class="tag">Help centre</span></a>
+            <a class="src-link" href="https://help.joincarbon.com/en/articles/10338862-how-carbon-evaluates-your-progress-at-your-check-in" target="_blank" rel="noopener">Carbon · weekly check-in report <span class="tag">Help centre</span></a>
+            <a class="src-link" href="https://joinladder.com/pricing" target="_blank" rel="noopener">Ladder · pricing <span class="tag">Pricing</span></a>
+            <a class="src-link" href="https://support.apple.com/en-us/128112" target="_blank" rel="noopener">Apple · Readiness score <span class="tag">Support</span></a>
+            <a class="src-link" href="https://support.apple.com/en-us/104997" target="_blank" rel="noopener">Apple Health · source priority <span class="tag">Support</span></a>
+          </div>
+        </section>
+
+        <section class="src-section">
+          <h3>Independent evidence</h3>
+          <div class="src-group">
+            <a class="src-link" href="https://www.clinicalnutritionjournal.com/article/S0261-5614%2820%2930403-9/abstract" target="_blank" rel="noopener">Image-based dietary assessment error <span class="tag">Meta-analysis</span></a>
+            <a class="src-link" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8928602/" target="_blank" rel="noopener">Monitoring intensity and weight loss <span class="tag">Review</span></a>
+            <a class="src-link" href="https://doi.org/10.1001/jama.2025.19563" target="_blank" rel="noopener">AI vs human coaching trial <span class="tag">RCT</span></a>
+            <a class="src-link" href="https://www.ftc.gov/business-guidance/resources/complying-ftcs-health-breach-notification-rule-0" target="_blank" rel="noopener">FTC health breach rule <span class="tag">Policy</span></a>
+          </div>
+        </section>
+
+        <section class="src-section">
+          <h3>Platform seams</h3>
+          <div class="src-group">
+            <a class="src-link" href="https://support.ouraring.com/hc/en-us/articles/360025438734-Apple-Health-Integration" target="_blank" rel="noopener">Oura · what does not export to Health <span class="tag">Support</span></a>
+            <a class="src-link" href="https://support.myfitnesspal.com/hc/en-us/articles/360032271092-Apple-Health-connection-and-syncing" target="_blank" rel="noopener">MyFitnessPal · duplicate exercise and same-day imports <span class="tag">Support</span></a>
+          </div>
+        </section>
+
+        <p class="src-note"><b>Product facts decay fast.</b> Anything older than about six months in this category should be re-verified. Vendor claims are never treated as proof in this deck.</p>
+      </div>
+    </div>
+  </dialog>
+  <script>
+    (() => {
+      "use strict";
+
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const deck = document.getElementById("deck");
+      const dotsWrap = document.getElementById("dots");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const progressBar = document.getElementById("progressBar");
+      const nowNum = document.getElementById("nowNum");
+      const nowTitle = document.getElementById("nowTitle");
+      const announcer = document.getElementById("announcer");
+      const ovDialog = document.getElementById("overviewDialog");
+      const ovGrid = document.getElementById("ovGrid");
+      const srcDialog = document.getElementById("sourcesDialog");
+
+      const TOTAL = slides.length;
+      const pad = (n) => String(n).padStart(2, "0");
+      const dots = [];
+      let index = 0;
+
+      slides.forEach((slide, i) => {
+        const title = slide.dataset.title || `Screen ${i + 1}`;
+        const short = slide.dataset.short || "";
+
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "dot";
+        dot.setAttribute("aria-label", `Screen ${i + 1}: ${title}`);
+        dot.addEventListener("click", () => go(i));
+        dotsWrap.appendChild(dot);
+        dots.push(dot);
+
+        const tile = document.createElement("button");
+        tile.type = "button";
+        tile.className = "ov-tile";
+        tile.setAttribute("aria-label", `Screen ${i + 1}: ${title}. ${short}`);
+        tile.innerHTML = `<span class="ov-num">${pad(i + 1)}</span><span class="ov-title">${title}</span><span class="ov-sub">${short}</span>`;
+        tile.addEventListener("click", () => {
+          ovDialog.close();
+          go(i);
+        });
+        ovGrid.appendChild(tile);
+      });
+
+      const tiles = Array.from(ovGrid.children);
+
+      function go(next, force = false) {
+        next = Math.max(0, Math.min(TOTAL - 1, next));
+        if (next === index && !force) return;
+        index = next;
+
+        slides.forEach((slide, i) => {
+          const active = i === index;
+          slide.classList.toggle("is-active", active);
+          slide.classList.toggle("is-before", i < index);
+          slide.setAttribute("aria-hidden", String(!active));
+          slide.inert = !active;
+          if (active) slide.scrollTop = 0;
+        });
+
+        const title = slides[index].dataset.title || `Screen ${index + 1}`;
+        nowNum.textContent = `${pad(index + 1)} / ${pad(TOTAL)}`;
+        nowTitle.textContent = title;
+        progressBar.style.width = `${((index + 1) / TOTAL) * 100}%`;
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === TOTAL - 1;
+        dots.forEach((dot, i) => dot.setAttribute("aria-current", i === index ? "true" : "false"));
+        tiles.forEach((tile, i) => tile.setAttribute("aria-current", i === index ? "true" : "false"));
+        announcer.textContent = `Screen ${index + 1} of ${TOTAL}: ${title}. ${slides[index].dataset.short || ""}`;
+
+        try {
+          history.replaceState(null, "", `#screen-${index + 1}`);
+        } catch (error) {
+          /* Some browsers reject history writes on file:// URLs. */
+        }
+      }
+
+      prevBtn.addEventListener("click", () => go(index - 1));
+      nextBtn.addEventListener("click", () => go(index + 1));
+
+      function openDialog(dialog) {
+        if (!dialog || dialog.open) return;
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else dialog.setAttribute("open", "");
+        const closer = dialog.querySelector("[data-close]");
+        if (closer) closer.focus();
+      }
+
+      document.querySelectorAll("[data-open]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openDialog(btn.dataset.open === "overview" ? ovDialog : srcDialog);
+        });
+      });
+
+      document.querySelectorAll("dialog [data-close]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const dialog = btn.closest("dialog");
+          if (dialog) dialog.close();
+        });
+      });
+
+      [ovDialog, srcDialog].forEach((dialog) => {
+        dialog.addEventListener("click", (event) => {
+          if (event.target === dialog) dialog.close();
+        });
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (document.querySelector("dialog[open]")) return;
+
+        const key = event.key;
+        const onControl = event.target.closest?.("button, a, input, textarea, select, [contenteditable='true']");
+        if (onControl && (key === " " || key === "Enter")) return;
+
+        if (key === "ArrowRight" || key === "PageDown" || key === " ") {
+          event.preventDefault();
+          go(index + 1);
+        } else if (key === "ArrowLeft" || key === "PageUp") {
+          event.preventDefault();
+          go(index - 1);
+        } else if (key === "Home") {
+          event.preventDefault();
+          go(0);
+        } else if (key === "End") {
+          event.preventDefault();
+          go(TOTAL - 1);
+        } else if (key.toLowerCase() === "g") {
+          event.preventDefault();
+          openDialog(ovDialog);
+        } else if (key.toLowerCase() === "s") {
+          event.preventDefault();
+          openDialog(srcDialog);
+        }
+      });
+
+      let startX = 0;
+      let startY = 0;
+      let tracking = false;
+
+      deck.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") return;
+        if (event.target.closest("a, button")) return;
+        tracking = true;
+        startX = event.clientX;
+        startY = event.clientY;
+      });
+
+      deck.addEventListener("pointerup", (event) => {
+        if (!tracking) return;
+        tracking = false;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+          go(index + (dx < 0 ? 1 : -1));
+        }
+      });
+
+      deck.addEventListener("pointercancel", () => { tracking = false; });
+
+      function indexFromHash() {
+        const match = window.location.hash.match(/^#screen-(\d+)$/);
+        if (!match) return 0;
+        const value = Number(match[1]) - 1;
+        return value >= 0 && value < TOTAL ? value : 0;
+      }
+
+      window.addEventListener("hashchange", () => {
+        const next = indexFromHash();
+        if (next !== index) go(next);
+      });
+
+      index = -1;
+      go(indexFromHash(), true);
+    })();
+  </script>
+</body>
+</html>
