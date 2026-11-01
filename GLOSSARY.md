@@ -128,6 +128,14 @@ _Avoid_: red flag, safety alert, risk
 The fixed, non-generated card shown for a Warning Sign. It points to emergency services or a clinician and ends coaching on that topic.
 _Avoid_: warning popup, safety message
 
+**Active Input Time**:
+The time the user spends actively entering an entry, excluding any wait for recognition.
+_Avoid_: logging time, capture time
+
+**Critical Defect**:
+A defect that breaks data integrity, privacy, safety or rule correctness, or blocks the Complete Daily Loop with no workaround. Any open Critical Defect blocks the Phase 1 Completion Gate, and finding one restarts the dogfood.
+_Avoid_: blocker, P0, showstopper
+
 **Phase 1 Completion Gate**:
-The evidence required to declare the personal-use MVP complete: a successful 14-day personal dogfood, reliable upgrades and data control, target logging speed, and no open critical defects.
+The evidence required to declare the personal-use MVP complete: a successful 14-day personal dogfood ending in a conclusive nutrition review on real data, reliable upgrades and data control, target logging speed, and no open Critical Defects.
 _Avoid_: feature complete, code complete
