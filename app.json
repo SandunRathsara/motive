@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Motive",
+    "slug": "motive",
+    "version": "1.0.0",
+    "scheme": "motive",
+    "userInterfaceStyle": "dark",
+    "ios": { "bundleIdentifier": "dev.motive.app", "supportsTablet": false },
+    "web": { "bundler": "metro" },
+    "plugins": ["expo-router", "expo-sqlite", "expo-sharing"],
+    "experiments": { "typedRoutes": true, "reactCompiler": true }
+  }
+}
