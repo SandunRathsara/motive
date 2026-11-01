@@ -12,4 +12,5 @@ module.exports = defineConfig([
       }],
     },
   },
+  { files: ['lib/logger.ts'], rules: { 'no-console': 'off' } },
 ]);
