@@ -116,6 +116,14 @@ _Avoid_: recovery week, rest week
 A Health Signal's typical value for this user, computed from that user's own recent history and compared with recent trends. Without enough known values it is unknown, never assumed.
 _Avoid_: normal range, readiness, recovery score
 
+**Warning Sign**:
+A message or data pattern suggesting something beyond wellness coaching, either urgent (for emergency services) or for a clinician. It is recognized by fixed rules, and the AI Coach can only add to them, never clear them.
+_Avoid_: red flag, safety alert, risk
+
+**Escalation Card**:
+The fixed, non-generated card shown for a Warning Sign. It points to emergency services or a clinician and ends coaching on that topic.
+_Avoid_: warning popup, safety message
+
 **Phase 1 Completion Gate**:
 The evidence required to declare the personal-use MVP complete: a successful 14-day personal dogfood, reliable upgrades and data control, target logging speed, and no open critical defects.
 _Avoid_: feature complete, code complete
