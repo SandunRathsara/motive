@@ -1,5 +1,5 @@
 export type LogEvent = 'record_failure' | 'rows_skipped';
-export type ErrorCode = 'openFailed' | 'integrityFailed' | 'migrationFailed' | 'newerSchema' | 'eraseFailed' | 'restoreFailed' | 'closeFailed';
+export type ErrorCode = 'openFailed' | 'integrityFailed' | 'migrationFailed' | 'newerSchema' | 'eraseFailed' | 'restoreFailed' | 'closeFailed' | 'metricTrackingFailed' | 'splashFailed';
 export interface LogFields {
   ids?: readonly string[];
   count?: number;
@@ -7,7 +7,7 @@ export interface LogFields {
 }
 
 const events = new Set<unknown>(['record_failure', 'rows_skipped']);
-const errors = new Set<unknown>(['openFailed', 'integrityFailed', 'migrationFailed', 'newerSchema', 'eraseFailed', 'restoreFailed', 'closeFailed']);
+const errors = new Set<unknown>(['openFailed', 'integrityFailed', 'migrationFailed', 'newerSchema', 'eraseFailed', 'restoreFailed', 'closeFailed', 'metricTrackingFailed', 'splashFailed']);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** No messages or arbitrary payloads, even from untyped callers in release builds. */

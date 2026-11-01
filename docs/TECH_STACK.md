@@ -16,7 +16,7 @@
 | Validation | Zod | Validate API, native-bridge, persisted, and other untrusted inputs; infer TypeScript types from schemas where useful. |
 | Backend | One content-stateless AI proxy on Cloudflare Workers; no other backend (decision record AI-1, §6) | UI and domain logic depend on feature service contracts, not a provider SDK. Follow AI-1 for what may leave the device, consent, authentication, caps and logging. |
 | Persistence | Expo SQLite, hand-written SQL migrations, no SQLCipher (decision record PHR-1, §6) | The Personal Health Record is local source of truth; follow PHR-1 for migrations, backup exclusion, export, deletion and recovery. |
-| Platform | iOS-first with portable shared UI | Use Expo development builds/EAS for native capabilities; preserve Android portability where it does not add scope. |
+| Platform/build | iOS-first; EAS cloud internal builds (BUILD-1, §6) | Follow BUILD-1 for variants, provisioning and tagged installs; preserve shared-UI portability where it does not add scope. |
 | Quality | Typecheck, lint, unit/component, architecture, critical Maestro flows | Create the scripts at bootstrap and run every applicable gate thereafter. |
 | Package manager | npm by default; one lockfile | If another manager is selected, update this row and use only its lockfile and commands. |
 
@@ -93,7 +93,7 @@ Open gates requiring a record before implementation:
 - HealthKit library versus custom native module, and any watchOS app;
 - the AI model provider, chosen by the AI proxy and provider selection slice's coaching bake-off together with the FR-1 meal benchmark and selection rule, and recorded as an AI-1 amendment (the host and health-data transmission boundary are settled by AI-1; the recognition pipeline and gates by FR-1);
 - any inline-style exception;
-- any change to package manager or native build workflow.
+- any change to package manager or the BUILD-1 native build workflow.
 
 ### PHR-1: Personal Health Record persistence and lifecycle
 
@@ -120,6 +120,12 @@ Open gates requiring a record before implementation:
     - A Plan Change keeps an Evidence Snapshot of the aggregates it cited, so deleting an entry never deletes or breaks plan history.
   - **Recovery:** never reset data automatically. If the database fails to open, fails its integrity check, fails migration or has a newer schema, block on a recovery screen offering retry, restore the pre-migration snapshot, share the raw database file, or "Erase and start over" behind a typed confirmation. Rows that fail validation stay on disk, are skipped and are reported as a count. A failed local commit shows the entry as not saved and keeps it editable; nothing is labeled saved before commit.
 - **Consequences:** device loss loses unexported data. Exact entity schemas are defined by each slice spec under this contract. Backup exclusion, protection class, migration, interrupted-delete and export cleanup behavior need real-device verification before the Phase 1 Completion Gate.
+- **Amendment (1 November 2026, bootstrap foundation):** from [Slice 1](https://github.com/SandunRathsara/motive/issues/19).
+  - **Integrity:** `quick_check` on each cold open, timed against UX-7; `integrity_check` before migrating. Detect `newerSchema` before any write-capable PRAGMA, including WAL configuration.
+  - **Directory:** Application Support/Motive holds the database, sidecars and latest snapshot, with reserved `photos/` and `export-staging/` directories. `modules/motive-record-directory` is the local Expo native shim (§2 rule 7) for backup exclusion; `lib/native/record-directory.ts` validates its bridge. Exclusion is re-applied and verified on every open. Real Finder-backup verification remains required.
+  - **Migration mechanics:** ordered, append-only `{version, sql}` migrations; the latest-only snapshot uses `VACUUM INTO`. The per-migration transaction includes its `user_version` bump. Capture immutable `lib/persistence/__fixtures__/schema-v<N>.sql` fixtures for each shipped schema at a tagged build, following that directory's README; test all fixtures through latest, including skipped versions. `gate_metric.recorded_at` is UTC Unix epoch milliseconds.
+  - **Recovery scope:** offer snapshot restore whenever a snapshot exists, including `newerSchema` and `integrityFailed`; warn that restoring discards writes made after the snapshot. Restore re-enters the normal open path. Until onboarding ships in slice 4, erase returns to the empty shell.
+  - **Unclean exits:** slice 1 owns recording, not just Gate Metrics storage. Use a launch-sentinel file in the app-controlled directory, set on active and cleared only on background; a surviving sentinel records `unclean_exit` on the next launch.
 
 ### HK-1: HealthKit read scope and provenance
 
@@ -183,19 +189,34 @@ Open gates requiring a record before implementation:
   - **Selection rule:** the recognition gates above and the coaching bake-off's gates are pass/fail. Among providers that pass both, the coaching bake-off score picks the winner; lower cost breaks a tie. If no provider passes recognition, the slice stops and returns to the roadmap; the bar is not relaxed silently.
 - **Consequences:** recognition costs two model calls per capture. FDC availability becomes a runtime dependency of recognition, not of reviewing stored entries. The Food capture contract's "nutrients come only from a matched database record" reads as "matched database record(s)". The provider is recorded in the AI-1 amendment with its measured results.
 
+### BUILD-1: Native builds, variants and installed-build identity
+
+- **Date:** 1 November 2026. **Status:** accepted. **Source:** [Slice 1](https://github.com/SandunRathsara/motive/issues/19). Resolves the native build workflow gate.
+- **Context:** owner dogfood must survive beyond free provisioning, and destructive verification must not touch the owner's record. Older installed builds must be reproducible as upgrade sources.
+- **Decision:**
+  - **Distribution:** EAS cloud builds, ad hoc internal distribution to the registered iPhone UDID under the owner's paid Apple Developer account. `eas.json` defines `development` (owner development client), `owner` (standalone internal) and `verification` (standalone internal).
+  - **Variants:** `app.config.ts` selects `owner` or `verification`. Bundle IDs are `dev.motive.app` and `dev.motive.app.verification`; names are Motive and Motive Verify; icons differ; schemes are `motive` and `motive-verification`. Each has its own sandbox and, when HealthKit ships, its own grant. `APP_VARIANT` and `EXPO_PUBLIC_APP_VARIANT` must agree; `lib/build.ts` exposes compile-time `isVerification` through the inlined public variable so owner builds can eliminate verification-only branches.
+  - **Worker slot:** `OWNER_WORKER_URL` / `VERIFICATION_WORKER_URL` populate the selected public `extra.workerUrl`, exposed by `lib/build.ts`. Slice 7 supplies the endpoints; verification uses FR-1's dev Worker.
+  - **Identity:** build ID `<version>+<buildNumber>`, exposed by `lib/build.ts`, matches tag `build/<variant>/<version>+<buildNumber>` on every installed build. `scripts/release-version.json` is the committed version source; EAS uses local versions with auto-increment off so rebuilding a tag retains its identity instead of taking remote version state.
+  - **Release:** `npm run release -- <owner|verification> [--dry-run]` invokes `scripts/release.mjs`. It refuses a dirty tree or an existing target tag, increments and commits the build number, then runs the matching EAS iOS profile and waits. Only success with a still-clean tree and unchanged HEAD creates the annotated tag. A failed build retains the build-number commit without a tag. It prints `git push origin <tag>` rather than pushing. Dry-run validates and prints the plan/push command without writing, building or tagging; the development-client profile is not handled by this script.
+  - **Owner provisioning:** manually run `eas login` and `eas init`, commit the resulting `extra.eas.projectId` in `app.config.ts`, register the iPhone with `eas device:create`, and authorize paid-account signing credentials. Use the release workflow for standalone installs, install the correct variant, and push its tag. A development-client install must also receive its matching build tag before installation.
+- **Consequences:** device registration, credentials, cloud builds, installation and tag pushes need owner access. Configured profiles alone are not evidence of a successful installed build; device checks remain in the slice checklist.
+
 ## 7. Quality gates
 
-At bootstrap, define scripts with these names or record the equivalent names here. Agents must inspect `package.json` and run the real scripts; absence of a script is not permission to claim a gate passed.
+`package.json` owns the executable commands. `verify` runs the following five gates in order and stops at the first failure; absence or non-execution of a gate is not a pass.
 
 | Gate | Required scope |
 |---|---|
 | `typecheck` | Strict TypeScript across app, source, tests, and config included by the project. |
-| `lint` | ESLint plus React/React Native, hooks, import-boundary, and inline-style rules. |
+| `lint` | Expo ESLint configuration plus `no-console` (only `lib/logger.ts` is exempt) and a JSX `style` attribute ban. |
 | `test` | Jest and React Native Testing Library for changed logic and important component behavior. |
 | `architecture` | Repeatable checks for forbidden imports, store placement, provider SDK leakage, and inline styles. |
-| `test:e2e` | Maestro critical flows once screens and the Maestro harness exist; native HealthKit paths also require real-device verification. |
+| `test:e2e` | `maestro test .maestro`, iOS simulator only; native HealthKit paths also require real-device verification. |
 
-A feature is done only when applicable gates pass and unrun gates are explicitly reported. Architecture checks belong in `scripts/` with source comments pointing to `docs/ARCHITECTURE.md`; do not encode a second, conflicting architecture in a lint rule.
+- Tests are colocated as `*.test.ts(x)` (ARCHITECTURE §2); `jest.config.js` discovers both extensions. Migration tests use Node's built-in `node:sqlite` through `lib/persistence/testing/node-executor.ts`, with no added SQL-engine dependency; this adapter is test-only.
+- `scripts/check-architecture.mjs` invokes `scripts/architecture/check.mjs`, whose source comments cite ARCHITECTURE §3–§5. Rule IDs: `provider-sdk`, `healthkit-boundary`, `store-placement`, `import-boundary`, `feature-jsx`, `inline-style`, `store-count`, `console-usage`. Fixture tests under `scripts/architecture/` verify rejection. The checker also rejects `StyleSheet.create`; lint and architecture rules must stay aligned with the documented boundaries.
+- A feature is done only when applicable gates pass and unrun gates are explicitly reported.
 
 ## 8. Official references for implementation work
 

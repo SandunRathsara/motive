@@ -1,0 +1,31 @@
+appId: dev.motive.app
+---
+- launchApp:
+    clearState: true
+# ShellTabBar accessibilityLabel maps to Maestro's text selector on iOS.
+# The header shares the active tab label; the second match is the bottom tab.
+- assertVisible: "Today"
+- tapOn:
+    text: "Today"
+    index: 1
+- assertVisible: "Your daily overview is coming next. There’s nothing you need to do here yet."
+- assertVisible: "Not built yet"
+- assertNotVisible: "MOTIVE · RECOVERY"
+- assertVisible: "Train"
+- tapOn: "Train"
+- assertVisible: "Your training space is coming next. Make yourself at home."
+- assertVisible: "Not built yet"
+- assertNotVisible: "MOTIVE · RECOVERY"
+- assertVisible: "Fuel"
+- tapOn: "Fuel"
+- assertVisible: "Your food journal is coming next. Nothing to log here just yet."
+- assertVisible: "Not built yet"
+- assertNotVisible: "MOTIVE · RECOVERY"
+- assertVisible: "Coach"
+- tapOn: "Coach"
+- assertVisible: "Your coaching space is coming next. We’ll take it one step at a time."
+- assertVisible: "Not built yet"
+- assertNotVisible: "MOTIVE · RECOVERY"
+- tapOn: "Today"
+- assertVisible: "Your daily overview is coming next. There’s nothing you need to do here yet."
+- assertNotVisible: "MOTIVE · RECOVERY"

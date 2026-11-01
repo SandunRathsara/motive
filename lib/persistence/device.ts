@@ -24,7 +24,9 @@ export async function deviceAdapters(): Promise<RecordAdapters> {
           else new File(path).delete();
         }
       },
-      copy: async (from, to) => { new File(from).copy(new File(to)); },
+      copy: async (from, to) => { await new File(from).copy(new File(to)); },
+      readText: (path) => new File(path).text(),
+      writeText: async (path, value) => { await new File(path).write(value); },
     },
     openDatabase: async (directory, name) => {
       const db = await openDatabaseAsync(name, { useNewConnection: true }, directory);

@@ -3,14 +3,17 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SqlExecutor, SqlParams } from './executor';
-import { eraseRecord, openRecord, restoreSnapshot, type RecordAdapters, type RecordStorage } from './record';
+import { createLaunchSentinel, eraseRecord, openRecord, rawDatabaseUri, RecordNotReadyError, requireRecord, restoreSnapshot, type RecordAdapters, type RecordStorage } from './record';
 import { nodeExecutor } from './testing/node-executor';
 
 const root = 'file:///test/Application%20Support/Motive';
 function fileStorage() {
   const files = new Set<string>([root, `${root}/record.sqlite`, `${root}/record.snapshot.sqlite`]);
+  const text = new Map<string, string>();
   const storage: RecordStorage = {
     root,
+    readText: async (path) => { const value = text.get(path); if (value === undefined) throw new Error('missing'); return value; },
+    writeText: async (path, value) => { files.add(path); text.set(path, value); },
     prepare: jest.fn(async () => { files.add(root); }),
     exists: jest.fn(async (path) => files.has(path)),
     remove: jest.fn(async (path) => { for (const file of files) if (file === path || file.startsWith(`${path}/`)) files.delete(file); }),
@@ -191,4 +194,38 @@ test('snapshot VACUUM binds a decoded filesystem path, not a URI', async () => {
   const result = await openRecord(adapters);
   expect(paths).toEqual([['/test/Application Support/Motive/record.snapshot.sqlite']]);
   if (result.status === 'ready') await result.handle.close();
+});
+
+test('ready accessor is unavailable after close, failed open, restore and erase', async () => {
+  const { adapters } = setup();
+  const result = await openRecord(adapters);
+  if (result.status !== 'ready') throw new Error('expected ready');
+  expect(requireRecord()).toBe(result.handle);
+  await result.handle.close();
+  expect(requireRecord).toThrow(RecordNotReadyError);
+  await openRecord(adapters);
+  await restoreSnapshot(adapters);
+  expect(requireRecord).toThrow(RecordNotReadyError);
+  await openRecord(adapters);
+  await eraseRecord(adapters);
+  expect(requireRecord).toThrow(RecordNotReadyError);
+  adapters.openDatabase = async () => { throw new Error('failed'); };
+  await openRecord(adapters);
+  expect(requireRecord).toThrow(RecordNotReadyError);
+});
+
+test('sentinel lives inside the erased tree and raw URI addresses the database', async () => {
+  const { adapters, storage } = setup();
+  const sentinel = createLaunchSentinel(storage);
+  expect(await sentinel.read()).toBeNull();
+  await sentinel.write('owner/1.0.0+1');
+  expect(await sentinel.read()).toBe('owner/1.0.0+1');
+  await sentinel.write('owner/1.0.0+2');
+  expect(await sentinel.read()).toBe('owner/1.0.0+2');
+  await sentinel.clear();
+  expect(await sentinel.read()).toBeNull();
+  await sentinel.write('owner/1.0.0+1');
+  await eraseRecord(adapters);
+  expect(await sentinel.read()).toBeNull();
+  expect(await rawDatabaseUri(adapters)).toBe(`${root}/record.sqlite`);
 });

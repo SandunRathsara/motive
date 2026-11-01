@@ -32,7 +32,7 @@ Phase 1 has exactly one user: **the owner**, on their own iPhone.
 
 ### Standing decisions
 
-- **Personal use:** one user, a real iPhone, installed through EAS development/internal builds under the paid Apple Developer Program (recorded in `docs/TECH_STACK.md` §6 by the Bootstrap slice). No TestFlight and no public distribution.
+- **Personal use:** one user, a real iPhone, installed under BUILD-1 (`docs/TECH_STACK.md` §6). No TestFlight and no public distribution.
 - **AI Coach explains; rules decide.** Deterministic rules create every **Plan Change**, and the user approves every one. The AI Coach never alters the plan.
 - **Apple Watch data arrives only through iPhone HealthKit.** There is no watchOS app.
 - **The Personal Health Record lives on the device.** A content-stateless AI proxy is the only server (AI-1). There are no accounts and no cloud sync (PHR-1).
@@ -84,11 +84,16 @@ The top principle is **minimal, extremely fast, user-friendly required input.** 
 | UX-13 | Coach output | One recommendation slot on Today; chat answers ≤ about 80 words with one next step; no notifications in Phase 1 | — |
 | UX-14 | Latency feel | Every tap gives visible feedback within 100 ms. Nothing is labelled saved before the local commit (§5.10) | — |
 
-**Accessibility floor:** WCAG 2.1 AA contrast, Dynamic Type up to 200% without breaking layout, VoiceOver labels on every logging control, and Reduce Motion respected. Detailed native accessibility criteria are open (§11).
+**Native accessibility checklist:** every slice inherits:
+- Dynamic Type at AX3 (the first iOS category ≥ 200%) on a 390 pt width, without clipping. iOS has no exact 200% category: AX2 is about 194%, AX3 about 235%.
+- No scroll to reach the primary action on a 390 × 844 pt viewport at the default text size; this rule does not apply at enlarged sizes.
+- VoiceOver labels, roles and states on every control; values on logging controls; focus order matching visual order.
+- Toasts and undo announced.
+- Touch targets and primary-control placement meet UX-8.
+- Declared token pairs pass WCAG 2.1 AA; meaning is never color-only (token contract: `docs/ARCHITECTURE.md` §3).
+- Reduce Motion replaces animation with a fade or none.
 
-No screen needs scrolling to reach its primary action on a 390 × 844 pt viewport.
-
-_Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRathsara/motive/issues/13); [Food recognition provider selection](https://github.com/SandunRathsara/motive/issues/16); [Food capture contract](https://github.com/SandunRathsara/motive/issues/8)._
+_Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRathsara/motive/issues/13); [Food recognition provider selection](https://github.com/SandunRathsara/motive/issues/16); [Food capture contract](https://github.com/SandunRathsara/motive/issues/8); [Slice 1 accessibility checklist](https://github.com/SandunRathsara/motive/issues/19)._
 
 ## 5. Requirements
 
@@ -610,8 +615,8 @@ Each item lists what is already fixed. Nothing here may be decided by guessing d
 
 **Left to a slice spec** (each decided by its slice before implementation):
 1. **Onboarding:** whether any ONB-1 input can be prefilled from Health safely, and how few screens it takes. The inputs themselves are fixed (Onboarding slice).
-2. **Visual language:** translating the prototype's look into NativeWind design tokens (Bootstrap slice).
-3. **Native accessibility criteria** beyond the §4 floor: one checklist (Dynamic Type at 200% on a 390 pt width, VoiceOver labels on logging controls, Reduce Motion) that every slice's acceptance inherits (Bootstrap slice).
+2. ~~Visual language~~ decided: option (a), the prototype's dark-only semantic tokens (`docs/ARCHITECTURE.md` §3; Bootstrap slice, issue #19).
+3. ~~Native accessibility criteria~~ decided: the §4 checklist is inherited by every slice (Bootstrap slice, issue #19).
 4. ~~Coach initiative~~ decided: no coach-initiated conversation and no Insight cards (COACH-7, TODAY-2).
 5. **Emergency region:** the country for `[EMERGENCY]` and `[CRISIS]`, with numbers checked against an official source (Safety slice).
 6. **Model provider:** OpenAI or Anthropic, chosen by the FR-1 selection rule (AI proxy and provider selection slice).

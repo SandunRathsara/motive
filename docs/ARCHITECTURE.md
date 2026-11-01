@@ -10,7 +10,7 @@ A feature crosses the repository vertically through a route, reusable UI, a feat
 
 ## 2. Directory contract
 
-Create this structure at bootstrap. Add folders when they first contain real code; do not scaffold empty speculative modules.
+Add folders when they first contain real code; do not scaffold empty speculative modules. Domain folders below illustrate the convention, not installed features.
 
 ```text
 /app                         Expo Router routes and layouts only
@@ -32,15 +32,22 @@ Create this structure at bootstrap. Add folders when they first contain real cod
   /coach
 /store                       Truly global client state; one focused store per file
 /lib                         Cross-feature infrastructure and contracts
+  /theme                     Presentation tokens consumed by NativeWind
+  /persistence               Single owner of the record connection for every domain
   /query                     Query client and shared query defaults
   /native                    Cross-feature native infrastructure only
   /contracts                 Shared DTO/domain contracts when genuinely shared
   /utils                     Generic, domain-free utilities
+  logger.ts                  One allowlisted logger (DATA-7)
+  build.ts                   Build identity and variant configuration
+/modules                     Local Expo native modules; platform shims only
 /assets                      Images, fonts, and static resources
 /scripts                     Repeatable architecture and maintenance checks
+  /architecture              Checker implementation and violation fixtures
+/.maestro                    iOS simulator flows
 ```
 
-Colocate tests as `*.test.ts` or `*.test.tsx` beside the code they cover, or mirror the source path under `__tests__`. Use one convention consistently after bootstrap. Maestro flows live in `.maestro/`.
+Colocate tests as `*.test.ts(x)` beside the code they cover.
 
 ### Folder rules
 
@@ -49,6 +56,7 @@ Colocate tests as `*.test.ts` or `*.test.tsx` beside the code they cover, or mir
 - `/features/<domain>` contains no JSX. Hooks return view models and actions; services own I/O; schemas validate boundaries; utilities stay pure.
 - `/store` is not a default destination for feature state. Create a store only when multiple routes/features need the same client state.
 - `/lib` is not a miscellaneous folder. Move code there only when at least two domains need it and it has no feature ownership.
+- `/modules` contains local Expo native shims required by documented platform decisions, not UI or domain logic. TypeScript adapters under `/lib/native` or the owning feature service validate their boundary.
 
 ## 3. Atomic UI rules
 
@@ -70,12 +78,20 @@ Atoms and generic molecules accept primitive or generic presentation props. Feat
 - Render loading, empty, error, and unavailable-data states deliberately. Missing health data is unknown, not zero.
 - Do not create an atom for every trivial wrapper. Extract a component when reuse, complexity, or testing justifies it.
 
+### Visual tokens
+
+- Dark only, ported from the frozen prototype. `lib/theme/tokens.js` owns values and the text/background allowlist; `tailwind.config.js` consumes it.
+- `bg` is the screen background; `surface`, `surface-2`, `surface-3` are layered surfaces; `line` and `line-soft` are borders/dividers; `text`, `muted`, `subtle` are text hierarchy.
+- `accent` marks primary actions, with `accent-ink` on accent fills. `info` is prototype blue; `caution` is amber. `danger` is only for destructive actions and errors, never intake versus target (no red shame states).
+- Radii `lg`/`md`/`sm` are 24/17/12 pt. Text uses the iOS system font; Avenir Next Condensed is for display numerals only. Inter is not bundled.
+- Use only declared text/background pairs. Sub-AA pairs, including `subtle` on `surface-2` or `surface-3`, are banned. The colocated token test checks every declared pair against WCAG AA.
+
 ## 4. Import boundaries
 
 | Importer | Allowed dependencies | Forbidden dependencies |
 |---|---|---|
 | `/app` | Components, feature hooks/contracts, global stores, `/lib` | Provider SDKs, native HealthKit calls, business utilities hidden in routes |
-| `/components` | Other components, presentation hooks, type-only domain contracts | Services, Query mutations, provider SDKs, global stores, native APIs |
+| `/components` | Other components, presentation hooks, type-only domain contracts, `/lib/theme` presentation tokens | Services, Query mutations, provider SDKs, global stores, native APIs |
 | `/features` | Its own modules, `/lib`, explicit public contracts of another feature | `/app`, JSX components, another feature's private files |
 | `/store` | Domain types and pure `/lib` utilities | Components, Query cache, provider SDKs, native APIs |
 | `/lib` | Installed infrastructure packages and platform APIs needed by its contract | `/app`, `/components`, `/features`, `/store` |

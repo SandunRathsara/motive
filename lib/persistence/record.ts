@@ -11,6 +11,8 @@ export interface RecordStorage {
   exists(path: string): Promise<boolean>;
   remove(path: string): Promise<void>;
   copy(from: string, to: string): Promise<void>;
+  readText(path: string): Promise<string>;
+  writeText(path: string, value: string): Promise<void>;
 }
 export interface RecordAdapters {
   storage: RecordStorage;
@@ -27,6 +29,31 @@ export type RestoreSnapshotResult = { ok: true } | { ok: false; code: 'snapshotM
 const name = 'record.sqlite';
 const snapshotName = 'record.snapshot.sqlite';
 const connections = new Map<SqlExecutor, string>();
+let readyRecord: RecordHandle | undefined;
+export class RecordNotReadyError extends Error {
+  readonly code = 'recordNotReady';
+  constructor() { super('Record is not ready'); }
+}
+export function requireRecord(): RecordHandle {
+  if (!readyRecord) throw new RecordNotReadyError();
+  return readyRecord;
+}
+export async function rawDatabaseUri(adapters?: RecordAdapters): Promise<string> {
+  return `${(await adaptersOrDefault(adapters)).storage.root}/${name}`;
+}
+export function createLaunchSentinel(storage: RecordStorage) {
+  const path = `${storage.root}/launch-sentinel`;
+  return {
+    read: async (): Promise<string | null> => await storage.exists(path) ? storage.readText(path) : null,
+    write: async (build: string): Promise<void> => { await storage.writeText(path, build); },
+    clear: async (): Promise<void> => { await storage.remove(path); },
+  };
+}
+export const launchSentinel = {
+  read: async () => createLaunchSentinel((await adaptersOrDefault()).storage).read(),
+  write: async (build: string) => createLaunchSentinel((await adaptersOrDefault()).storage).write(build),
+  clear: async () => createLaunchSentinel((await adaptersOrDefault()).storage).clear(),
+};
 let lifecycle: Promise<unknown> = Promise.resolve();
 function exclusive<T>(work: () => Promise<T>): Promise<T> {
   const result = lifecycle.then(work);
@@ -41,7 +68,7 @@ function tracked(db: SqlExecutor, root: string): SqlExecutor {
     exec: (sql) => db.exec(sql), run: (sql, params) => db.run(sql, params),
     getFirst: (sql, params) => db.getFirst(sql, params), getAll: (sql, params) => db.getAll(sql, params),
     transaction: (work) => db.transaction(work),
-    close: async () => { await db.close(); connections.delete(handle); },
+    close: async () => { if (readyRecord === handle) readyRecord = undefined; await db.close(); connections.delete(handle); },
   };
   connections.set(handle, root);
   return handle;
@@ -53,6 +80,7 @@ async function closeConnections(root: string): Promise<void> {
 
 export function openRecord(adapters?: RecordAdapters): Promise<OpenRecordResult> {
   return exclusive(async () => {
+    readyRecord = undefined;
     let db: SqlExecutor | undefined;
     let storage: RecordStorage | undefined;
     let snapshotExists = false;
@@ -92,6 +120,7 @@ export function openRecord(adapters?: RecordAdapters): Promise<OpenRecordResult>
       });
       if (failure) return fail(failure);
       snapshotExists = await storage.exists(`${storage.root}/${snapshotName}`);
+      readyRecord = db;
       return { status: 'ready', handle: db, snapshotExists };
     } catch { return fail({ code: 'openFailed' }); }
   });
@@ -100,6 +129,7 @@ export function openRecord(adapters?: RecordAdapters): Promise<OpenRecordResult>
 /** Caller must stop ingestion/reset client state before invoking this core. */
 export function eraseRecord(adapters?: RecordAdapters): Promise<EraseRecordResult> {
   return exclusive(async () => {
+    readyRecord = undefined;
     let storage: RecordStorage;
     try {
       storage = (await adaptersOrDefault(adapters)).storage;
@@ -120,6 +150,7 @@ export function eraseRecord(adapters?: RecordAdapters): Promise<EraseRecordResul
 /** Keeps the snapshot for retry after interruption; reopen through openRecord afterward. */
 export function restoreSnapshot(adapters?: RecordAdapters): Promise<RestoreSnapshotResult> {
   return exclusive(async () => {
+    readyRecord = undefined;
     try {
       const { storage } = await adaptersOrDefault(adapters);
       await closeConnections(storage.root);
