@@ -15,7 +15,7 @@
 | Forms | TanStack Form | Use for complex or multi-step forms; a trivial single-value control may use local state. |
 | Validation | Zod | Validate API, native-bridge, persisted, and other untrusted inputs; infer TypeScript types from schemas where useful. |
 | Backend | Provider-neutral feature services | No provider is selected. UI and domain logic depend on service contracts, not a backend SDK. |
-| Persistence | Explicit decision gate | No database or offline-sync architecture until the persistence gate in §5 is resolved. |
+| Persistence | Expo SQLite, hand-written SQL migrations, no SQLCipher (decision record PHR-1, §6) | The Personal Health Record is local source of truth; follow PHR-1 for migrations, backup exclusion, export, deletion and recovery. |
 | Platform | iOS-first with portable shared UI | Use Expo development builds/EAS for native capabilities; preserve Android portability where it does not add scope. |
 | Quality | Typecheck, lint, unit/component, architecture, critical Maestro flows | Create the scripts at bootstrap and run every applicable gate thereafter. |
 | Package manager | npm by default; one lockfile | If another manager is selected, update this row and use only its lockfile and commands. |
@@ -72,7 +72,7 @@ When the backend gate is opened, the decision must name:
 
 ## 5. Persistence decision gate
 
-Persistence is not selected by default. Before adding SQLite, MMKV, AsyncStorage, SecureStore, files, or offline synchronization, record:
+The Personal Health Record store is resolved by decision record PHR-1 in §6. For any other store, persistence is not selected by default. Before adding SQLite, MMKV, AsyncStorage, SecureStore, files, or offline synchronization, record:
 
 1. **Data:** exact entities and whether they contain health or credential data.
 2. **Need:** reload persistence, offline reads, offline writes, or secure credential storage.
@@ -90,11 +90,48 @@ Use this section for concise, append-only architecture decisions that change the
 Open gates requiring a record before implementation:
 
 - backend provider and authentication;
-- persistence and offline behavior;
 - HealthKit library versus custom native module, and any watchOS app;
 - AI/model provider and health-data transmission;
 - any inline-style exception;
 - any change to package manager or native build workflow.
+
+### PHR-1: Personal Health Record persistence and lifecycle
+
+- **Date:** 1 November 2026. **Status:** accepted. **Source:** [Personal Health Record lifecycle](https://github.com/SandunRathsara/motive/issues/7), informed by [On-device storage options for the Personal Health Record](https://github.com/SandunRathsara/motive/issues/5). Resolves the §5 persistence gate for the Personal Health Record.
+- **Context:** Phase 1 is a personal-use build for one user. The Personal Health Record lives on-device with no accounts or cloud sync, and Offline Core Logging requires durable local writes.
+- **Decision:**
+  - **Ownership:** the on-device database is the only source of truth. There is no server copy or conflict resolution.
+  - **Engine:** Expo SQLite with hand-written, ordered SQL migrations versioned by `PRAGMA user_version`. Drizzle, MMKV and WatermelonDB are not adopted. Zod validates rows at the repository boundary.
+  - **Migrations:** forward-only. Each migration and its version bump commit in one transaction before any consumer mounts. Before migrating, take one SQLite backup snapshot into a backup-excluded directory and keep only the latest. Refuse to open a database with a newer schema, and never delete it. Test every shipped schema version as an upgrade source, including skipped versions.
+  - **Backups:** exclude the database, its sidecars, Food Draft photos, snapshots and export staging from iCloud/Finder device backups. Keep durable files out of Caches/tmp. Export is the only off-device copy. Losing the device loses unexported data. There is no in-app restore in Phase 1.
+  - **Protection:** iOS Data Protection at the default app class (Complete Until First User Authentication). No SQLCipher. Release builds never log health values, food text, chat content or file paths; logs carry only IDs, counts and error codes. No third-party analytics or crash-reporting SDK in Phase 1.
+  - **Retention:** no automatic expiry. A Food Draft persists until confirmed or discarded, and its photo is deleted on either outcome; confirmed entries keep no image. Assembled AI payloads, recognition responses and export staging are never persisted beyond their operation.
+  - **Export:** one versioned JSON file containing export/schema version, timestamp, canonical units, stable IDs and relationships, provenance, and the full record scope: profile, Goals and target history, workouts and sets, food entries, pending Food Drafts as text, health samples, insights, Plan Change history and coach chat. Pending-draft photos are referenced but not included. There is no CSV. Delivered through the share sheet after a plaintext warning; staging lives in a backup-excluded directory and is cleaned up after use and on the next launch after a crash.
+  - **Deletion:**
+    - `PRAGMA secure_delete=ON` is set database-wide.
+    - **Delete entry** removes the row and any attachment.
+    - **Delete all data:**
+      1. Stops ingestion and writes, then closes connections.
+      2. Removes the database, `-wal` and `-shm` files, photos, snapshots, export staging, key-value state and in-memory state.
+      3. Verifies everything is gone before reporting success, and retries after an interruption.
+      4. Returns to onboarding.
+    - The promise covers only app-controlled data on the device. Apple Health data, already-shared exports, and data the AI provider received under its retention terms are outside it, and the confirmation copy says so.
+    - A health signal is turned off in Apple Health's permissions, not in Motive (HK-1). Apple doesn't report the revocation, so cached history is kept and ages out of today-scoped values and trends through the staleness and window rules in [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6). "Delete this signal's history" is the explicit way to purge it.
+    - A Plan Change keeps an Evidence Snapshot of the aggregates it cited, so deleting an entry never deletes or breaks plan history.
+  - **Recovery:** never reset data automatically. If the database fails to open, fails its integrity check, fails migration or has a newer schema, block on a recovery screen offering retry, restore the pre-migration snapshot, share the raw database file, or "Erase and start over" behind a typed confirmation. Rows that fail validation stay on disk, are skipped and are reported as a count. A failed local commit shows the entry as not saved and keeps it editable; nothing is labeled saved before commit.
+- **Consequences:** device loss loses unexported data. Exact entity schemas are defined by each slice spec under this contract. Backup exclusion, protection class, migration, interrupted-delete and export cleanup behavior need real-device verification before the Phase 1 Completion Gate.
+
+### HK-1: HealthKit read scope and provenance
+
+- **Date:** 1 November 2026. **Status:** accepted. **Source:** [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6), informed by [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2). Records the read types, permission scope, empty-sample handling and provenance parts of the §3 HealthKit gate. The library choice stays open.
+- **Context:** Apple hides read denial: an empty read can't be told apart from denied, missing or unsynced data. Phase 1 has no watchOS app.
+- **Decision:**
+  - **Scope:** read-only. Read only body mass, workouts, sleep analysis, HRV (SDNN) and resting heart rate. No write types and no `NSHealthUpdateUsageDescription`. No clinical records.
+  - **Sync:** foreground only (app open and pull-to-refresh); no background delivery. Anchored queries honor deletions. The first sync backfills 90 days.
+  - **Storage:** normalized samples and anchors are cached in the Personal Health Record and fall under PHR-1 export and deletion.
+  - **Availability:** per type, only observable states: `unavailableOnDevice`, `notRequested`, `requested` with `hasSamples` / `noReadableSamples` / `queryError`, plus last query and last sample times. Read denial is never inferred.
+  - **Provenance DTO:** UUID, type, interval, value with explicit unit (or sleep stage), source bundle ID and name, source revision, optional device, and the user-entered flag. Zod-validated at the health service boundary. A device is never made up from a display name.
+- **Consequences:** library selection (Kingstinct versus a custom Expo module) and real-device verification remain an open gate. Adding a type needs a Phase 1 rule that consumes it and a new decision record.
 
 ## 7. Quality gates
 
