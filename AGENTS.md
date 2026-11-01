@@ -35,3 +35,17 @@ On native compilation or build errors, invoke the Expo MCP logging tool first wh
 ## Environment truth
 
 `package.json`, lockfiles, Expo config, and the directory tree describe the current implementation; these documents describe the required conventions and decisions. If they disagree, stop and reconcile the discrepancy explicitly rather than silently replacing one with the other.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as GitHub issues in `SandunRathsara/motive`. Specs published by `/to-spec` also get the `spec` label. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
