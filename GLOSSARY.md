@@ -84,6 +84,38 @@ _Avoid_: tracked day, complete day
 The flag raised when recent Logged Day intake averages below the user's minimum intake floor. While it is raised, no Plan Change may lower the calorie target.
 _Avoid_: low-intake alert, restriction warning
 
+**Training Program**:
+The user's own ordered rotation of Session Templates with a target number of sessions per week. Missing a day shifts the rotation; it never skips or orphans a session.
+_Avoid_: routine, split, schedule, generated plan
+
+**Session Template**:
+A named session in the Training Program (for example "Upper A") listing its exercises, each with its working-set count, rep range and load increment.
+_Avoid_: workout, routine, day
+
+**Recommended Set**:
+The load and reps the progression rule suggests for the next working set of an exercise. Logging it as-is or adjusting it is how it is accepted. It carries out the existing prescription, so it is never a Plan Change.
+_Avoid_: ghost target, set target, suggestion
+
+**Failed Set**:
+A working set that falls short of the bottom of its rep range at the recommended load. It is recorded as it happened, without judgment.
+_Avoid_: failure set, missed set
+
+**Stall**:
+An exercise that has had a Failed Set in consecutive sessions, or has gained no reps at the same load over consecutive sessions.
+_Avoid_: plateau, regression
+
+**Load Reset**:
+A Recommended Set that steps an exercise's load down after a Stall and restarts its rep range. It is part of the progression rule, not a Plan Change.
+_Avoid_: deload, regression
+
+**Deload**:
+A Plan Change that makes one week of sessions lighter across the whole Training Program because many exercises have Stalled. It is distinct from a single exercise's Load Reset.
+_Avoid_: recovery week, rest week
+
+**Signal Baseline**:
+A Health Signal's typical value for this user, computed from that user's own recent history and compared with recent trends. Without enough known values it is unknown, never assumed.
+_Avoid_: normal range, readiness, recovery score
+
 **Phase 1 Completion Gate**:
 The evidence required to declare the personal-use MVP complete: a successful 14-day personal dogfood, reliable upgrades and data control, target logging speed, and no open critical defects.
 _Avoid_: feature complete, code complete
