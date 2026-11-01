@@ -56,6 +56,10 @@ _Avoid_: pending entry, unconfirmed log
 A reviewed and confirmed record of food eaten, made of recognized items with their portions, assumptions and provenance. Only Food Entries count toward intake; Food Drafts never do.
 _Avoid_: food log item, meal record, logged food
 
+**Recipe Estimate**:
+A recognized item whose nutrients are computed from a typical recipe of database-matched ingredients, because no direct database match exists for the dish. It is shown as one item with its assumed recipe and always flagged for checking.
+_Avoid_: guess, AI estimate
+
 **Meal Slot**:
 The section of the day a Food Entry belongs to: Breakfast, Lunch, Dinner, or Snack. It is guessed from when the meal was eaten and can always be changed.
 _Avoid_: meal type, meal category
