@@ -16,6 +16,10 @@ _Avoid_: feature checklist, dashboard loop
 A single proposed adjustment to a nutrition target, training prescription, or schedule that the user can inspect, accept, reject, and reverse.
 _Avoid_: autonomous adjustment, silent update
 
+**Plan Version**:
+One numbered state of the user's whole plan, covering nutrition targets and the Training Program. A new one is created by every applied Plan Change, every user edit, and every revert; earlier versions are never rewritten.
+_Avoid_: plan revision, target version, program version
+
 **AI Coach**:
 The user-facing wellness coach that discusses the user's data and explains deterministic coaching recommendations. It does not independently alter the plan.
 _Avoid_: autonomous coach, medical advisor
