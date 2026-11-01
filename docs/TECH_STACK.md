@@ -14,7 +14,7 @@
 | Shared client state | Zustand, separate files in `/store` | Use only for state shared across routes/features; never duplicate Query cache into a store. |
 | Forms | TanStack Form | Use for complex or multi-step forms; a trivial single-value control may use local state. |
 | Validation | Zod | Validate API, native-bridge, persisted, and other untrusted inputs; infer TypeScript types from schemas where useful. |
-| Backend | Provider-neutral feature services | No provider is selected. UI and domain logic depend on service contracts, not a backend SDK. |
+| Backend | One content-stateless AI proxy on Cloudflare Workers; no other backend (decision record AI-1, §6) | UI and domain logic depend on feature service contracts, not a provider SDK. Follow AI-1 for what may leave the device, consent, authentication, caps and logging. |
 | Persistence | Expo SQLite, hand-written SQL migrations, no SQLCipher (decision record PHR-1, §6) | The Personal Health Record is local source of truth; follow PHR-1 for migrations, backup exclusion, export, deletion and recovery. |
 | Platform | iOS-first with portable shared UI | Use Expo development builds/EAS for native capabilities; preserve Android portability where it does not add scope. |
 | Quality | Typecheck, lint, unit/component, architecture, critical Maestro flows | Create the scripts at bootstrap and run every applicable gate thereafter. |
@@ -57,9 +57,9 @@ Apple Health access requires a native iOS layer. A web fallback, Expo Go, or a J
 
 ## 4. Backend and secrets
 
-Until a backend provider is selected, implement only the service contract and an appropriate local/mock adapter required by the feature. Do not scatter placeholder provider calls through the app.
+The only Phase 1 server is the AI proxy defined by decision record AI-1 (§6). Its model provider is chosen by the AI slice's bake-off and recorded as an AI-1 amendment; until then, implement only the service contract and a local/mock adapter. Do not scatter placeholder provider calls through the app.
 
-When the backend gate is opened, the decision must name:
+Any backend beyond the AI proxy needs its own decision record naming:
 
 - provider, authentication flow, authorization/ownership rules, and environments;
 - service interface and provider-adapter location;
@@ -68,7 +68,7 @@ When the backend gate is opened, the decision must name:
 - explicit consent and transport rules for health data;
 - deletion/export behavior, retention, logging, and analytics restrictions.
 
-**Secrets:** API keys, service-role credentials, model-provider secrets, and privileged tokens stay server-side. Public client configuration is not a secret store. Do not send health data to an AI provider without an explicit product/privacy decision and user consent.
+**Secrets:** API keys, service-role credentials, model-provider secrets, and privileged tokens stay server-side. Public client configuration is not a secret store. Health data goes to an AI provider only within the AI-1 Coaching Context and photo rules, and only after the matching AI-1 consent.
 
 ## 5. Persistence decision gate
 
@@ -89,9 +89,9 @@ Use this section for concise, append-only architecture decisions that change the
 
 Open gates requiring a record before implementation:
 
-- backend provider and authentication;
+- any backend beyond the AI proxy (AI-1);
 - HealthKit library versus custom native module, and any watchOS app;
-- AI/model provider and health-data transmission;
+- the AI model provider, chosen by the AI slice's bake-off and recorded as an AI-1 amendment (the host and health-data transmission boundary are settled by AI-1);
 - any inline-style exception;
 - any change to package manager or native build workflow.
 
@@ -105,7 +105,7 @@ Open gates requiring a record before implementation:
   - **Migrations:** forward-only. Each migration and its version bump commit in one transaction before any consumer mounts. Before migrating, take one SQLite backup snapshot into a backup-excluded directory and keep only the latest. Refuse to open a database with a newer schema, and never delete it. Test every shipped schema version as an upgrade source, including skipped versions.
   - **Backups:** exclude the database, its sidecars, Food Draft photos, snapshots and export staging from iCloud/Finder device backups. Keep durable files out of Caches/tmp. Export is the only off-device copy. Losing the device loses unexported data. There is no in-app restore in Phase 1.
   - **Protection:** iOS Data Protection at the default app class (Complete Until First User Authentication). No SQLCipher. Release builds never log health values, food text, chat content or file paths; logs carry only IDs, counts and error codes. No third-party analytics or crash-reporting SDK in Phase 1.
-  - **Retention:** no automatic expiry. A Food Draft persists until confirmed or discarded, and its photo is deleted on either outcome; confirmed entries keep no image. Assembled AI payloads, recognition responses and export staging are never persisted beyond their operation.
+  - **Retention:** no automatic expiry. A Food Draft persists until confirmed or discarded, and its photo is deleted on either outcome; confirmed entries keep no image. A draft's parsed, grounded line items (matched record and the nutrient values used) persist with the draft so review survives an app restart, per the Food capture contract (issue #8). Assembled AI payloads, raw recognition/provider responses and export staging are never persisted beyond their operation.
   - **Export:** one versioned JSON file containing export/schema version, timestamp, canonical units, stable IDs and relationships, provenance, and the full record scope: profile, Goals and target history, workouts and sets, food entries, pending Food Drafts as text, health samples, insights, Plan Change history and coach chat. Pending-draft photos are referenced but not included. There is no CSV. Delivered through the share sheet after a plaintext warning; staging lives in a backup-excluded directory and is cleaned up after use and on the next launch after a crash.
   - **Deletion:**
     - `PRAGMA secure_delete=ON` is set database-wide.
@@ -132,6 +132,33 @@ Open gates requiring a record before implementation:
   - **Availability:** per type, only observable states: `unavailableOnDevice`, `notRequested`, `requested` with `hasSamples` / `noReadableSamples` / `queryError`, plus last query and last sample times. Read denial is never inferred.
   - **Provenance DTO:** UUID, type, interval, value with explicit unit (or sleep stage), source bundle ID and name, source revision, optional device, and the user-entered flag. Zod-validated at the health service boundary. A device is never made up from a display name.
 - **Consequences:** library selection (Kingstinct versus a custom Expo module) and real-device verification remain an open gate. Adding a type needs a Phase 1 rule that consumes it and a new decision record.
+
+### AI-1: AI proxy and health-data transmission boundary
+
+- **Date:** 1 November 2026. **Status:** accepted; the model provider is pending an amendment. **Source:** [AI data-transmission boundary](https://github.com/SandunRathsara/motive/issues/9), informed by [AI Coach model provider and stateless proxy hosting](https://github.com/SandunRathsara/motive/issues/4) and [Food recognition and nutrition grounding options](https://github.com/SandunRathsara/motive/issues/3). Resolves the health-data transmission part of the AI/model-provider gate and fixes the proxy host.
+- **Context:** the Personal Health Record is on-device only (PHR-1). The AI Coach explains; deterministic rules create every Plan Change. Food capture is photo or text, recognized when online. A model provider's "no training" policy is not zero retention.
+- **Decision:**
+  - **Proxy:** one Cloudflare Worker serves both the AI Coach and food recognition. It is **content-stateless**: it never stores request or response bodies, health values, food text, photos or chat. One Durable Object holds only security and quota state: the enrolled public key, used nonces, the monthly billed-token count and a kill switch. No KV, queues, R2, caches or analytics payloads.
+  - **Provider:** OpenAI or Anthropic, called directly from the Worker. One provider serves both uses. It is selected by the coaching bake-off on synthetic fixtures, run as the AI slice's first acceptance step, together with the meal benchmark from [Food recognition provider selection](https://github.com/SandunRathsara/motive/issues/16). The winner and its exact retention terms are recorded as an AI-1 amendment. Bundled food-recognition APIs (Passio, Edamam, fatsecret, LogMeal) are not used. Recognition uses the same provider's vision/text model, grounded in USDA FoodData Central. The FoodData Central lookup receives only a normalized food name.
+  - **Retention posture:** accept the provider's standard no-training API retention; zero-retention agreements are not required. Use the provider's no-storage options (for example `store:false`) and no provider-side threads, files, vector stores or hosted retrieval. Keep health facts and evidence IDs out of schema definitions.
+  - **Coaching Context**, assembled on the device for each request. Nothing outside it leaves the device for coaching:
+    - 28 days of daily aggregates: weight with 7-day trend, sleep per night, HRV/resting HR against baseline, nutrition totals and adherence, plus coverage and known/unknown flags;
+    - individual food line items and workout sets only from the last 7 days, or when they are the cited evidence;
+    - the Plan Change being explained, with fixed before/after values and its Evidence Snapshot;
+    - profile fields only where a rule uses them (Goal, targets, training days, age in years);
+    - the current thread's last 6 turns.
+  - **Never sent:** raw HealthKit samples, sample UUIDs, source or device names, birth date, names, photos (to the coach), location or stable record IDs. Evidence IDs are local to each request and mapped back on the device.
+  - **Chat history:** on-device only, in the Personal Health Record. No provider-side conversation state.
+  - **Photos:** sent only to recognition, with the draft's optional caption. Re-encoded with EXIF and location stripped and downscaled (size set by the recognition slice spec, within the 1.5 MB cap). Never sent to the AI Coach or the food database; never stored by the proxy. Coach questions about a meal use its confirmed line items.
+  - **Consent:** two separate one-time consents, **Food recognition** and **AI Coach**, each shown before its first network use. Each names the provider, what is sent, its retention and what works without it. Both are revocable in Settings and asked again when the provider, retention terms or data categories change. There is no per-signal AI exclusion; signals are excluded through Apple Health permissions (HK-1). A "What the coach can see" view shows the last Coaching Context sent.
+  - **Authentication:** the app holds an owner-enrolled, non-exportable Secure Enclave P-256 key. Its public key is pinned once in the Worker through `wrangler secret`, and re-enrolled after a reinstall or a new device. Every request signs method, path, body hash, timestamp and nonce. The Worker rejects a bad signature, a timestamp outside ±60 s or a reused nonce before reading the body. No App Attest in Phase 1. No shared or embedded secret.
+  - **Secrets and caps:** the provider API key exists only as a Worker secret binding. The app ships no model key, provider SDK or shared secret. The Worker alone fixes the model allowlist, system prompt, output schema and caps: at most 32 KB of text or one image of 1.5 MB or less per request, 600 output tokens, a 30 s upstream timeout and at most one retry. A hard **$10/month** cap is enforced by the Durable Object's billed-token count; the provider's budget alert is only a backstop.
+  - **Logging:** Worker observability, invocation logs, tails, Logpush and tracing are off. Bodies, headers, prompts and provider error text are never logged. Before any real data is sent, a synthetic log test (a distinctive fake body and header plus a forced upstream error, with every log surface inspected) must pass.
+  - **Model output:** display-only, with no tools or executable payloads. Responses are Zod-validated against a fixed `answer` / `evidenceRefs` / `insufficientData` / `escalation` schema. Evidence refs must exist in that request's Coaching Context, and any quoted Plan Change number must match. Unvalidated prose is never streamed.
+  - **Offline and failure:** Plan Changes and their deterministic explanations always work offline. Offline, the chat composer is disabled and questions are not queued. Food Drafts queue offline and are sent on reconnect in the foreground, only if recognition consent is granted, without changing their capture time. Every timeout, refusal, failed validation or reached cap falls back to the deterministic explanation or "insufficient data", with a plain reason.
+  - **Declined or revoked consent:** without AI Coach consent, Coach shows only deterministic insights and explanations. Without recognition consent, Food Drafts are saved but never sent. They stay pending and never count toward intake, as in the technical-failure state of [Food capture contract](https://github.com/SandunRathsara/motive/issues/8), with a prompt to enable recognition instead of Retry. Phase 1 has no consent-free path to a Food Entry. Revoking consent stops future sends immediately and deletes nothing locally.
+  - **Retention copy:** the delete-all and revoke-consent confirmations both say: "Data already sent to [provider] for coaching or food recognition is kept by them for up to 30 days for abuse monitoring, or longer if flagged, and Motive can't recall it. Motive's server keeps none of your health or chat content." Update it in the provider amendment if the selected terms differ.
+- **Consequences:** a lost or reinstalled phone needs manual key re-enrollment. The provider amendment, the synthetic log test, the spend cap and the enrollment/replay checks are verified before the Phase 1 Completion Gate. Safety escalation detection is decided separately.
 
 ## 7. Quality gates
 
