@@ -32,7 +32,7 @@ Phase 1 has exactly one user: **the owner**, on their own iPhone.
 
 ### Standing decisions
 
-- **Personal use:** one user, a real iPhone, installed through local Xcode or EAS provisioning. No TestFlight and no public distribution.
+- **Personal use:** one user, a real iPhone, installed through EAS development/internal builds under the paid Apple Developer Program (recorded in `docs/TECH_STACK.md` §6 by the Bootstrap slice). No TestFlight and no public distribution.
 - **AI Coach explains; rules decide.** Deterministic rules create every **Plan Change**, and the user approves every one. The AI Coach never alters the plan.
 - **Apple Watch data arrives only through iPhone HealthKit.** There is no watchOS app.
 - **The Personal Health Record lives on the device.** A content-stateless AI proxy is the only server (AI-1). There are no accounts and no cloud sync (PHR-1).
@@ -59,6 +59,7 @@ Phase 1 has exactly one user: **the owner**, on their own iPhone.
 - Weekday/weekend calorie cycling. Every day has the same target.
 - Restoring from an export or importing data. Device loss loses unexported data.
 - Push notifications, widgets and Live Activities.
+- Insight cards (coach suggestions that aren't Plan Changes) and any coach-initiated conversation.
 - Writing to Apple Health, and reading any type outside HK-1.
 
 _Decided in: charting decisions on the Phase 1 MVP roadmap; [Personal Health Record lifecycle](https://github.com/SandunRathsara/motive/issues/7); [Nutrition adaptation rules](https://github.com/SandunRathsara/motive/issues/10)._
@@ -109,7 +110,7 @@ _Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRath
   - at most **one trend line** (SIG-10);
   - the Plan Version chip when the plan has changed ("Plan v3 · changed today");
   - the Under-Floor notice (NUT-10) and any data Escalation Card (SAFE-6).
-- **TODAY-2** A pending Plan Change always takes the recommendation slot. What fills the slot otherwise is open (§11).
+- **TODAY-2** A pending Plan Change always takes the recommendation slot. With no pending Plan Change, the slot is hidden.
 - **TODAY-3** There is **no readiness word and no score.** Values tied to today show "not yet available" until their sample arrives (SIG-8), never as an error.
 - **TODAY-4** Every number opens its detail view in one tap.
 - **TODAY-5** A quick-add control is always visible, offering **Food** (FOOD-1) and **Set**. Set resumes the active session, or otherwise opens the next session in the rotation.
@@ -394,8 +395,8 @@ _Decided in: [Plan Change lifecycle](https://github.com/SandunRathsara/motive/is
   - Offline, the composer is disabled and questions aren't queued.
   - Every timeout, refusal, failed validation or reached cap falls back to the deterministic explanation or "insufficient data", with a plain reason.
   - Unvalidated prose is never streamed.
-- **COACH-7** Whether the coach ever starts a conversation, and whether Insight cards (suggestions that aren't Plan Changes) exist, are open (§11).
-- **COACH-8** The model provider is chosen by the AI slice's coaching bake-off together with the FR-1 meal benchmark, and recorded as an AI-1 amendment. Until then, only the service contract and a mock adapter exist.
+- **COACH-7** The coach never starts a conversation, and there are no Insight cards. Coaching on Today is only the pending Plan Change (TODAY-2); everything else is the user asking.
+- **COACH-8** The model provider is chosen by the AI proxy and provider selection slice (coaching bake-off together with the FR-1 meal benchmark), and recorded as an AI-1 amendment. Until then, only the service contract and a mock adapter exist.
 
 _Decided in: [AI data-transmission boundary](https://github.com/SandunRathsara/motive/issues/9); [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12)._
 
@@ -516,7 +517,7 @@ The entities below are indicative. Exact schemas are defined by each slice spec 
 - **Authorization:** granted per type and direction and revocable at any time. A denied read can't be told apart from no data, so absence is never reported as denial or treated as zero (SIG-3).
 - **Watch workouts** carry duration and heart rate with little per-set strength detail. They supplement manual set logging and never replace it (SIG-9).
 - **Freshness:** sleep and HRV often arrive after waking, so today's values show "not yet available" without an error state.
-- **Provisioning:** a free local Xcode install expires after 7 days and must be re-signed. Paid provisioning avoids that. Either is acceptable for personal use.
+- **Provisioning:** Phase 1 uses the paid Apple Developer Program. A free local Xcode install expires after 7 days, mid-dogfood, and free accounts limit the app IDs the verification variant needs.
 
 _Decided in: [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2); [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6)._
 
@@ -607,17 +608,15 @@ _Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRath
 
 Each item lists what is already fixed. Nothing here may be decided by guessing during implementation.
 
-**On the Phase 1 MVP roadmap (not yet decided):**
-1. **Onboarding:** whether any ONB-1 input can be prefilled from Health safely, and how few screens it takes. The inputs themselves are fixed.
-2. **Visual language:** translating the prototype's look into NativeWind design tokens.
-3. **Native accessibility criteria** beyond the §4 floor (Dynamic Type and VoiceOver acceptance for the logging flows).
-4. **Coach initiative:** whether the coach ever starts a conversation (in-app only; there is no push), how often, and whether Insight cards exist and what their actions are. A pending Plan Change always takes Today's recommendation slot first.
-
-**Left to a slice spec:**
-5. **Emergency region:** the country for `[EMERGENCY]` and `[CRISIS]`, with numbers checked against an official source (safety slice).
-6. **Model provider:** OpenAI or Anthropic, chosen by the FR-1 selection rule (AI and recognition slices).
-7. **HealthKit library:** Kingstinct or a custom Expo module, after real-device validation (health slice).
-8. **Constraint framing:** whether the protein floor or the kcal target reads as the harder constraint when both are missed (Today/Fuel slice).
+**Left to a slice spec** (each decided by its slice before implementation):
+1. **Onboarding:** whether any ONB-1 input can be prefilled from Health safely, and how few screens it takes. The inputs themselves are fixed (Onboarding slice).
+2. **Visual language:** translating the prototype's look into NativeWind design tokens (Bootstrap slice).
+3. **Native accessibility criteria** beyond the §4 floor: one checklist (Dynamic Type at 200% on a 390 pt width, VoiceOver labels on logging controls, Reduce Motion) that every slice's acceptance inherits (Bootstrap slice).
+4. ~~Coach initiative~~ decided: no coach-initiated conversation and no Insight cards (COACH-7, TODAY-2).
+5. **Emergency region:** the country for `[EMERGENCY]` and `[CRISIS]`, with numbers checked against an official source (Safety slice).
+6. **Model provider:** OpenAI or Anthropic, chosen by the FR-1 selection rule (AI proxy and provider selection slice).
+7. **HealthKit library:** Kingstinct or a custom Expo module, after real-device validation (Health Signals slice).
+8. **Constraint framing:** whether the protein floor or the kcal target reads as the harder constraint when both are missed (Food capture and recognition slice).
 
 **Outside this contract:**
 9. **Name:** "Motive" is a placeholder, and naming happens elsewhere.
@@ -660,7 +659,7 @@ How the prototype PRD's IDs map to this contract. "Dropped" names the decision t
 | FR-20 | SIG-2, SIG-11 | |
 | FR-21 | SIG-12 | Per-signal coaching toggles dropped; excluded through Apple Health permissions (Health signal read set and provenance policy). |
 | FR-22 | SIG-9 | Conflict prompt dropped; workouts link by ≥ 50% overlap. |
-| FR-23 | COACH-7 | Insight feed is open (§11). |
+| FR-23 | COACH-7 | Insight feed dropped (Phase 1 slice sequence and spec breakdown). |
 | FR-24 | COACH-2 | Citations are request-local evidence refs. |
 | FR-25 | COACH-4 | |
 | FR-26 | PLAN-1–PLAN-12 | Rules propose, not the coach; suppression is by kind and direction. |
