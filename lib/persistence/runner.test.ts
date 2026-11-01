@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SqlExecutor } from './executor';
 import { migrations } from './migrations';
-import { migrateRecord, schemaVersion } from './runner';
+import { checkIntegrity, migrateRecord, schemaVersion } from './runner';
 import { nodeExecutor } from './testing/node-executor';
 
 const schema = (db: SqlExecutor) => db.getAll<{ type: string; name: string; sql: string }>(
@@ -20,7 +20,9 @@ afterEach(async () => {
 
 test('fresh install commits the only table, version, index and SQL constraints', async () => {
   const db = database();
-  expect(await migrateRecord(db, async () => {})).toBeNull();
+  const snapshot = jest.fn(async () => {});
+  expect(await migrateRecord(db, snapshot)).toBeNull();
+  expect(snapshot).not.toHaveBeenCalled();
   expect(await schemaVersion(db)).toBe(migrations.length);
   expect((await schema(db)).map((row) => row.name)).toEqual(['gate_metric_recorded_at', 'gate_metric']);
   await db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['id', 'unclean_exit', null, '1+1', 1]);
@@ -28,12 +30,36 @@ test('fresh install commits the only table, version, index and SQL constraints',
   await expect(db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['bad', 'other', null, '1+1', 1])).rejects.toThrow();
 });
 
-test('failed step rolls back its DDL and version while preserving previous commits', async () => {
+test.each([null, {}, { user_version: -1 }, { user_version: 1.5 }, { user_version: '1' }, { user_version: Number.MAX_SAFE_INTEGER + 1 }])('rejects invalid stored version %j', async (row) => {
   const db = database();
-  const list = [...migrations, { version: 2, sql: 'CREATE TABLE partial(id); INSERT INTO missing VALUES (1);' }];
-  expect(await migrateRecord(db, async () => {}, list)).toEqual({ code: 'migrationFailed', from: 1, to: 2 });
+  db.getFirst = async <T>() => row as T;
+  await expect(schemaVersion(db)).rejects.toThrow();
+});
+
+test.each([[], [{ quick_check: 'corrupt' }], [{ wrong: 'ok' }], [{ quick_check: 'ok', extra: 'ok' }], [{ quick_check: 'ok' }, { quick_check: 'ok' }]].map((rows) => ({ rows })))('rejects invalid integrity rows $rows', async ({ rows }) => {
+  const db = database();
+  db.getAll = async <T>() => rows as T[];
+  expect(await checkIntegrity(db, 'quick_check')).toBe(false);
+});
+
+test('failure on step 3 of a 1→4 upgrade rolls back every pending DDL and version', async () => {
+  const db = database();
+  await migrateRecord(db, async () => {});
+  const before = await schema(db);
+  const list = [...migrations,
+    { version: 2, sql: 'CREATE TABLE second(id)' },
+    { version: 3, sql: 'CREATE TABLE third(id)' },
+    { version: 4, sql: 'CREATE TABLE partial(id); INSERT INTO missing VALUES (1);' },
+  ];
+  const snapshot = jest.fn(async () => {
+    expect(await schemaVersion(db)).toBe(1);
+    expect(await schema(db)).toEqual(before);
+  });
+  expect(await migrateRecord(db, snapshot, list)).toEqual({ code: 'migrationFailed', from: 1, to: 4 });
   expect(await schemaVersion(db)).toBe(1);
-  expect(await db.getFirst("SELECT name FROM sqlite_schema WHERE name = 'partial'")).toBeNull();
+  expect(await schema(db)).toEqual(before);
+  expect(await migrateRecord(db, snapshot, list)).toEqual({ code: 'migrationFailed', from: 1, to: 4 });
+  expect(snapshot).toHaveBeenCalledTimes(2);
 });
 
 test('newer schema refusal leaves an on-disk database byte-identical', async () => {
@@ -101,7 +127,9 @@ test.each(readdirSync(fixtures).filter((name) => /^schema-v\d+\.sql$/.test(name)
 
 test('integrity or snapshot failure does not apply any migrations', async () => {
   const db = database();
-  expect(await migrateRecord(db, async () => { throw new Error('diskFull'); })).toEqual({ code: 'migrationFailed', from: 0, to: 1 });
-  expect(await schemaVersion(db)).toBe(0);
-  expect(await schema(db)).toEqual([]);
+  await migrateRecord(db, async () => {});
+  const before = await schema(db);
+  expect(await migrateRecord(db, async () => { throw new Error('diskFull'); }, [...migrations, { version: 2, sql: 'CREATE TABLE second(id)' }])).toEqual({ code: 'migrationFailed', from: 1, to: 2 });
+  expect(await schemaVersion(db)).toBe(1);
+  expect(await schema(db)).toEqual(before);
 });

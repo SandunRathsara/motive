@@ -1,5 +1,15 @@
 import { logEvent } from './logger';
 
+test('known lifecycle error codes pass the runtime allowlist', () => {
+  const output = jest.spyOn(console, 'info').mockImplementation(() => {});
+  try {
+    for (const errorCode of ['openFailed', 'integrityFailed', 'migrationFailed', 'newerSchema', 'eraseFailed', 'restoreFailed', 'closeFailed', 'metricTrackingFailed', 'splashFailed'] as const) {
+      logEvent('record_failure', { errorCode });
+      expect(output).toHaveBeenLastCalledWith('record_failure', { errorCode });
+    }
+  } finally { output.mockRestore(); }
+});
+
 test('release logger drops unknown events, free text, arbitrary objects and invalid fields', () => {
   const dev = __DEV__;
   Object.defineProperty(globalThis, '__DEV__', { value: false, configurable: true });

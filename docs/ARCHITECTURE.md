@@ -74,6 +74,7 @@ Atoms and generic molecules accept primitive or generic presentation props. Feat
 
 - Use PascalCase filenames and component names; one primary component per file.
 - Use NativeWind classes with semantic design tokens. Keep repeated class composition in the component, not in a new styling framework.
+- Inline styles require an explicitly approved, documented exception. Navigator chrome uses `lib/theme/navigation.ts`, derived from tokens and applied through the root `ThemeProvider`, not JSX style props or style-suffixed navigator options.
 - Use accessible roles, labels, focus behavior, and minimum touch targets as part of the component contract.
 - Render loading, empty, error, and unavailable-data states deliberately. Missing health data is unknown, not zero.
 - Do not create an atom for every trivial wrapper. Extract a component when reuse, complexity, or testing justifies it.
@@ -90,10 +91,10 @@ Atoms and generic molecules accept primitive or generic presentation props. Feat
 
 | Importer | Allowed dependencies | Forbidden dependencies |
 |---|---|---|
-| `/app` | Components, feature hooks/contracts, global stores, `/lib` | Provider SDKs, native HealthKit calls, business utilities hidden in routes |
-| `/components` | Other components, presentation hooks, type-only domain contracts, `/lib/theme` presentation tokens | Services, Query mutations, provider SDKs, global stores, native APIs |
+| `/app` | Components, feature hooks/contracts through each feature's public `index.ts` only, global stores, `/lib` | Private feature files, provider SDKs, native HealthKit calls, business utilities hidden in routes |
+| `/components` | Other components, presentation hooks, type-only domain contracts from public feature `index.ts` or `<domain>.types.ts` / `<domain>.schemas.ts`, `/lib/theme` presentation tokens | Private feature hooks/services, all `@tanstack/react-query` imports, provider SDKs, global stores, native APIs |
 | `/features` | Its own modules, `/lib`, explicit public contracts of another feature | `/app`, JSX components, another feature's private files |
-| `/store` | Domain types and pure `/lib` utilities | Components, Query cache, provider SDKs, native APIs |
+| `/store` | Domain types and pure `/lib/utils/**` utilities or `/lib/contracts/**` contracts (§2) | Other store files, components, Query cache, provider SDKs, native APIs |
 | `/lib` | Installed infrastructure packages and platform APIs needed by its contract | `/app`, `/components`, `/features`, `/store` |
 
 Additional rules:

@@ -1,13 +1,15 @@
-export type LogEvent = 'record_failure' | 'rows_skipped';
-export type ErrorCode = 'openFailed' | 'integrityFailed' | 'migrationFailed' | 'newerSchema' | 'eraseFailed' | 'restoreFailed' | 'closeFailed' | 'metricTrackingFailed' | 'splashFailed';
+const logEvents = ['record_failure', 'rows_skipped'] as const;
+const errorCodes = ['openFailed', 'integrityFailed', 'migrationFailed', 'newerSchema', 'eraseFailed', 'restoreFailed', 'closeFailed', 'metricTrackingFailed', 'splashFailed'] as const;
+export type LogEvent = typeof logEvents[number];
+export type ErrorCode = typeof errorCodes[number];
 export interface LogFields {
   ids?: readonly string[];
   count?: number;
   errorCode?: ErrorCode;
 }
 
-const events = new Set<unknown>(['record_failure', 'rows_skipped']);
-const errors = new Set<unknown>(['openFailed', 'integrityFailed', 'migrationFailed', 'newerSchema', 'eraseFailed', 'restoreFailed', 'closeFailed', 'metricTrackingFailed', 'splashFailed']);
+const events = new Set<unknown>(logEvents);
+const errors = new Set<unknown>(errorCodes);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** No messages or arbitrary payloads, even from untyped callers in release builds. */

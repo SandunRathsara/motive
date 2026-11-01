@@ -67,18 +67,25 @@ export function checkArchitecture(root = process.cwd()) {
       }
       // docs/ARCHITECTURE.md §4: enforce the importer/dependency table, including type-only contracts.
       let forbidden = false;
-      if (layer === 'components' && target !== null) {
-        forbidden = dependency !== 'components' && !(target === 'lib/theme' || target.startsWith('lib/theme/')) && !(dependency === 'features' && typeOnly);
+      const publicFeature = /^features\/[^/]+\/index\.ts$/.test(target ?? '');
+      const featureContract = publicFeature || /^features\/([^/]+)\/\1\.(?:types|schemas)\.ts$/.test(target ?? '');
+      // docs/ARCHITECTURE.md §4: routes use only the public feature index.
+      if (layer === 'app' && dependency === 'features') {
+        forbidden = !publicFeature;
+      } else if (layer === 'components' && target !== null) {
+        forbidden = dependency !== 'components' && !(target === 'lib/theme' || target.startsWith('lib/theme/')) && !(typeOnly && featureContract);
       } else if (layer === 'features' && target !== null) {
         forbidden = !['features', 'lib'].includes(dependency) || (dependency === 'features' && target.split('/')[1] !== domain && !/^features\/[^/]+\/index\.ts$/.test(target));
       } else if (layer === 'store' && target !== null) {
-        forbidden = dependency !== 'store' && !(dependency === 'features' && typeOnly) && !/^lib\/(?:utils|contracts)\//.test(target);
+        // docs/ARCHITECTURE.md §4: independent stores depend only on domain types and pure lib utilities/contracts.
+        forbidden = !(dependency === 'features' && typeOnly) && !/^lib\/(?:utils|contracts)\//.test(target);
       } else if (layer === 'lib' && target !== null) {
         forbidden = ROOTS.filter((name) => name !== 'lib').includes(dependency);
       }
       if (isPackage && ['app', 'components', 'store'].includes(layer) && NATIVE_DATA.test(specifier)) forbidden = true;
       if (isPackage && layer === 'store' && /^@tanstack\/react-query(?:\/|$)/.test(specifier)) forbidden = true;
-      if (isPackage && layer === 'components' && /^@tanstack\/react-query(?:\/|$)/.test(specifier) && names.some((name) => /mutation/i.test(name) || name === '*')) forbidden = true;
+      // docs/ARCHITECTURE.md §4–§5: all Query access belongs in feature hooks, not components.
+      if (isPackage && layer === 'components' && /^@tanstack\/react-query(?:\/|$)/.test(specifier)) forbidden = true;
       if (isPackage && ['app', 'components', 'store'].includes(layer) && specifier === 'react-native' && names.some((name) => ['NativeModules', 'TurboModuleRegistry'].includes(name))) forbidden = true;
       if (forbidden) add(node, 'import-boundary', `${layer}/ cannot import '${specifier}'${typeOnly ? ' (type-only)' : ''}.`, 4);
     }
@@ -113,9 +120,13 @@ export function checkArchitecture(root = process.cwd()) {
       }
       // docs/ARCHITECTURE.md §2, §4: catch JSX syntax as well as JSX file extensions.
       if (layer === 'features' && !/\.[jt]sx$/.test(file) && (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node))) add(node, 'feature-jsx', 'Features must not contain JSX.', 4);
-      // docs/ARCHITECTURE.md §3: NativeWind replaces JSX style attributes and StyleSheet.create.
+      // docs/ARCHITECTURE.md §3: NativeWind replaces style props; navigator chrome uses the token theme.
       if (['app', 'components', 'features'].includes(layer)) {
-        if (ts.isJsxAttribute(node) && node.name.getText(source) === 'style') add(node, 'inline-style', 'Use NativeWind classes, not a JSX style attribute.', 3);
+        if (ts.isJsxAttribute(node) && /^(?:style|.*Style)$/.test(node.name.getText(source))) add(node, 'inline-style', 'Use NativeWind classes or the navigation theme, not JSX style attributes.', 3);
+        if (['app', 'components'].includes(layer) && (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) && ts.isObjectLiteralExpression(node.parent)) {
+          const name = ts.isComputedPropertyName(node.name) ? node.name.expression : node.name;
+          if ((ts.isIdentifier(name) || ts.isStringLiteral(name)) && /Style$/.test(name.text)) add(node, 'inline-style', 'Use the navigation theme, not style options.', 3);
+        }
         if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'create') {
           const owner = node.expression.expression;
           if ((ts.isIdentifier(owner) && styleSheets.has(owner.text)) || (ts.isPropertyAccessExpression(owner) && owner.name.text === 'StyleSheet' && reactNativeNamespaces.has(owner.expression.getText(source)))) add(node, 'inline-style', 'Use NativeWind classes, not StyleSheet.create.', 3);

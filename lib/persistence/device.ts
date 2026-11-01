@@ -16,7 +16,16 @@ export async function deviceAdapters(): Promise<RecordAdapters> {
           new Directory(root, name).create({ intermediates: true, idempotent: true });
         }
       },
-      exists: async (path) => path === root ? native.directoryExists() : Paths.info(path).exists,
+      exists: async (path) => {
+        if (path === root) return native.directoryExists();
+        if (Paths.info(path).exists) return true;
+        // Paths.info also returns false without read permission. Listing the parent
+        // must succeed before absence is trusted (especially for pending erasure).
+        const slash = path.lastIndexOf('/');
+        const parent = path.slice(0, slash);
+        if (parent === root && !await native.directoryExists()) return false;
+        return new Directory(parent).list().some((entry) => entry.uri.replace(/\/$/, '') === path);
+      },
       remove: async (path) => {
         const info = Paths.info(path);
         if (info.exists) {
@@ -25,6 +34,10 @@ export async function deviceAdapters(): Promise<RecordAdapters> {
         }
       },
       copy: async (from, to) => { await new File(from).copy(new File(to)); },
+      move: async (from, to, overwrite = false) => {
+        if (Paths.info(from).isDirectory) await new Directory(from).move(new Directory(to), { overwrite });
+        else await new File(from).move(new File(to), { overwrite });
+      },
       readText: (path) => new File(path).text(),
       writeText: async (path, value) => { await new File(path).write(value); },
     },

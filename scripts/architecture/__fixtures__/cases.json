@@ -1,7 +1,9 @@
 {
   "clean": {
-    "app/index.tsx": "import Screen from '@/components/Screen'; import '@/features/health'; import '@/store/session'; export default () => <Screen sceneStyle={{}} />;",
-    "components/Screen.tsx": "import type { Record } from '@/features/health'; import { type Goal } from '../features/goals'; import '@/lib/theme/tokens'; import { useQuery } from '@tanstack/react-query'; export default () => <View className='bg-white' />;",
+    "app/index.tsx": "import Screen from '@/components/Screen'; import '@/features/health'; import '@/features/health/index.ts'; import '@/store/session'; export default () => <Screen />;",
+    "components/Screen.tsx": "import type { Record } from '@/features/health'; import type { Health } from '@/features/health/health.types'; import type { Schema } from '@/features/health/health.schemas'; import { type Goal } from '../features/goals'; import '@/lib/theme/tokens'; export default () => <View className='bg-bg' />;",
+    "features/health/health.types.ts": "export type Health = string;",
+    "features/health/health.schemas.ts": "export type Schema = string;",
     "features/health/index.ts": "export type Record = { id: string }; import '../goals'; import '../goals/index.ts'; import '@/lib/contracts/shared';",
     "features/health/services/adapter.ts": "import '@kingstinct/react-native-healthkit'; import 'react-native-health'; import 'custom-healthkit-bridge'; import 'expo-sqlite';",
     "features/goals/index.ts": "export type Goal = string;",
@@ -12,6 +14,20 @@
     "lib/logger.ts": "console.info('safe-code'); console['warn']('safe-code');"
   },
   "violations": [
+    { "path": "app/private.ts", "source": "import { useHealth } from '@/features/health/hooks/useHealth';", "rule": "import-boundary" },
+    { "path": "app/contract.ts", "source": "import type { Health } from '@/features/health/health.types';", "rule": "import-boundary" },
+    { "path": "components/PrivateType.ts", "source": "import type { Health } from '@/features/health/hooks/useHealth';", "rule": "import-boundary" },
+    { "path": "components/ServiceType.ts", "source": "import type { Health } from '@/features/health/services/health';", "rule": "import-boundary" },
+    { "path": "components/Query.ts", "source": "import { useQuery } from '@tanstack/react-query';", "rule": "import-boundary" },
+    { "path": "components/QueryType.ts", "source": "import type { QueryClient } from '@tanstack/react-query';", "rule": "import-boundary" },
+    { "path": "store/coupled.ts", "source": "import '@/store/session';", "rule": "import-boundary" },
+    { "path": "store/coupled-type.ts", "source": "import type { State } from '@/store/session';", "rule": "import-boundary" },
+    { "path": "components/Content.tsx", "source": "export const UI = () => <ScrollView contentContainerStyle={{}} />;", "rule": "inline-style" },
+    { "path": "app/scene.tsx", "source": "export default () => <Tabs sceneStyle={{}} />;", "rule": "inline-style" },
+    { "path": "app/options.tsx", "source": "export default () => <Tabs screenOptions={{ sceneStyle: {} }} />;", "rule": "inline-style" },
+    { "path": "components/options.ts", "source": "const options = { 'tabBarStyle': {} };", "rule": "inline-style" },
+    { "path": "app/computed.ts", "source": "const options = { ['sceneStyle']: {} };", "rule": "inline-style" },
+    { "path": "app/shorthand.ts", "source": "const options = { sceneStyle };", "rule": "inline-style" },
     { "path": "components/Hook.ts", "source": "import { useHealth } from '@/features/health/hooks/useHealth';", "rule": "import-boundary" },
     { "path": "components/Store.ts", "source": "import '@/store/x';", "rule": "import-boundary" },
     { "path": "components/Infra.ts", "source": "import '@/lib/persistence/database';", "rule": "import-boundary" },

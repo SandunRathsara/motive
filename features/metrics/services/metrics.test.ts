@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, access, rm, copyFile, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, access, rm, copyFile, readFile, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildId } from '@/lib/build';
@@ -14,7 +14,7 @@ beforeEach(async () => {
       root, prepare: async () => { await mkdir(root, { recursive: true }); },
       exists: async (path) => { try { await access(path); return true; } catch { return false; } },
       remove: (path) => rm(path, { force: true, recursive: true }),
-      copy: copyFile, readText: (path) => readFile(path, 'utf8'), writeText: (path, value) => writeFile(path, value),
+      copy: copyFile, move: rename, readText: (path) => readFile(path, 'utf8'), writeText: (path, value) => writeFile(path, value),
     },
     openDatabase: async (directory, name) => nodeExecutor(join(directory, name)),
   };

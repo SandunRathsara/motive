@@ -1,6 +1,7 @@
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RecordRecoveryViewModel } from '@/features/record-recovery';
+import { ActionButton } from '@/components/atoms/ActionButton';
 
 export function RecoveryTemplate({ model }: { model: RecordRecoveryViewModel }) {
   return (
@@ -22,29 +23,15 @@ export function RecoveryTemplate({ model }: { model: RecordRecoveryViewModel }) 
         </View>
         <View className="gap-3 pb-4 pt-6">
           {model.step === 'actions' ? <>
-            <Pressable accessibilityRole="button" accessibilityLabel="Retry" accessibilityState={{ disabled: model.busy }} disabled={model.busy} onPress={model.retry} className="min-h-14 items-center justify-center rounded-md bg-accent px-4 py-4">
-              <Text className="text-lg font-semibold text-accent-ink">Retry</Text>
-            </Pressable>
-            {model.snapshotExists && <Pressable accessibilityRole="button" accessibilityLabel="Restore snapshot" accessibilityState={{ disabled: model.busy }} disabled={model.busy} onPress={model.chooseRestore} className="min-h-14 items-center justify-center rounded-md bg-surface px-4 py-4">
-              <Text className="text-lg text-text">Restore snapshot</Text>
-            </Pressable>}
-            <Pressable accessibilityRole="button" accessibilityLabel="Share raw database" accessibilityState={{ disabled: model.busy }} disabled={model.busy} onPress={model.chooseShare} className="min-h-14 items-center justify-center rounded-md bg-surface px-4 py-4">
-              <Text className="text-lg text-text">Share raw database</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Erase and start over" accessibilityState={{ disabled: model.busy }} disabled={model.busy} onPress={model.chooseErase} className="min-h-14 items-center justify-center rounded-md border border-danger px-4 py-4">
-              <Text className="text-lg text-danger">Erase and start over</Text>
-            </Pressable>
+            <ActionButton label="Retry" disabled={model.busy} onPress={model.retry} />
+            {model.snapshotExists && <ActionButton label="Restore snapshot" variant="secondary" disabled={model.busy} onPress={model.chooseRestore} />}
+            <ActionButton label="Share raw database" variant="secondary" disabled={model.busy} onPress={model.chooseShare} />
+            <ActionButton label="Erase and start over" variant="destructive" disabled={model.busy} onPress={model.chooseErase} />
           </> : <>
-            {model.step === 'erase' ? <Pressable accessibilityRole="button" accessibilityLabel="Confirm erase and start over" accessibilityState={{ disabled: !model.canErase }} disabled={!model.canErase} onPress={model.confirmErase} className="min-h-14 items-center justify-center rounded-md border border-danger bg-surface px-4 py-4">
-              <Text className="text-lg font-semibold text-danger">Erase and start over</Text>
-            </Pressable> : model.step === 'restore' ? <Pressable accessibilityRole="button" accessibilityLabel="Confirm restore snapshot" accessibilityState={{ disabled: model.busy }} disabled={model.busy} onPress={model.confirmRestore} className="min-h-14 items-center justify-center rounded-md bg-accent px-4 py-4">
-              <Text className="text-lg font-semibold text-accent-ink">Restore snapshot</Text>
-            </Pressable> : <Pressable accessibilityRole="button" accessibilityLabel="Continue to share sheet" accessibilityState={{ disabled: model.busy }} disabled={model.busy} onPress={model.confirmShare} className="min-h-14 items-center justify-center rounded-md bg-accent px-4 py-4">
-              <Text className="text-lg font-semibold text-accent-ink">Continue to share sheet</Text>
-            </Pressable>}
-            <Pressable accessibilityRole="button" accessibilityLabel="Cancel" accessibilityState={{ disabled: model.busy }} disabled={model.busy} onPress={model.cancel} className="min-h-14 items-center justify-center rounded-md bg-surface px-4 py-4">
-              <Text className="text-lg text-text">Cancel</Text>
-            </Pressable>
+            {model.step === 'erase' ? <ActionButton label="Erase and start over" accessibilityLabel="Confirm erase and start over" variant="destructive" disabled={!model.canErase} onPress={model.confirmErase} />
+              : model.step === 'restore' ? <ActionButton label="Restore snapshot" accessibilityLabel="Confirm restore snapshot" disabled={model.busy} onPress={model.confirmRestore} />
+                : <ActionButton label="Continue to share sheet" disabled={model.busy} onPress={model.confirmShare} />}
+            <ActionButton label="Cancel" variant="secondary" disabled={model.busy} onPress={model.cancel} />
           </>}
         </View>
       </ScrollView>

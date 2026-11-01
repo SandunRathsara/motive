@@ -4,8 +4,8 @@ import { recordDirectoryModule } from '@/lib/native/record-directory';
 import { deviceAdapters } from './device';
 
 jest.mock('expo-file-system', () => ({
-  Directory: jest.fn(() => ({ create: jest.fn(), delete: jest.fn() })),
-  File: jest.fn(() => ({ copy: jest.fn(), delete: jest.fn() })),
+  Directory: jest.fn(() => ({ create: jest.fn(), delete: jest.fn(), move: jest.fn(), list: jest.fn(() => []) })),
+  File: jest.fn(() => ({ copy: jest.fn(), delete: jest.fn(), move: jest.fn() })),
   Paths: { info: jest.fn(() => ({ exists: false, isDirectory: null })) },
 }));
 jest.mock('expo-sqlite', () => ({ openDatabaseAsync: jest.fn() }));
@@ -66,4 +66,21 @@ test('file deletion is idempotent and deletes whole directories when present', a
   jest.mocked(Paths.info).mockReturnValueOnce({ exists: true, isDirectory: false });
   await storage.remove(`${root}/record.sqlite-wal`);
   expect(File).toHaveBeenCalledWith(`${root}/record.sqlite-wal`);
+});
+
+test('same-parent erasure moves the directory without overwrite; snapshot replacement opts in', async () => {
+  const { storage } = await deviceAdapters();
+  jest.mocked(Paths.info).mockReturnValueOnce({ exists: true, isDirectory: true });
+  await storage.move(root, `${root}.erasing`);
+  expect(Directory).toHaveBeenNthCalledWith(1, root);
+  expect(Directory).toHaveBeenNthCalledWith(2, `${root}.erasing`);
+  expect(jest.mocked(Directory).mock.results[0].value.move).toHaveBeenCalledWith(expect.anything(), { overwrite: false });
+  await storage.move(`${root}/snapshot.tmp`, `${root}/snapshot`, true);
+  expect(jest.mocked(File).mock.results[0].value.move).toHaveBeenCalledWith(expect.anything(), { overwrite: true });
+});
+
+test('Paths.info false is not trusted when a pending erasure parent cannot be listed', async () => {
+  const { storage } = await deviceAdapters();
+  jest.mocked(Directory).mockImplementationOnce(() => ({ list: () => { throw new Error('permission denied'); } }) as unknown as Directory);
+  await expect(storage.exists(`${root}.erasing`)).rejects.toThrow('permission denied');
 });

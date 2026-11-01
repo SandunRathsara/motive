@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SqlExecutor, SqlParams } from './executor';
 import { createLaunchSentinel, eraseRecord, openRecord, rawDatabaseUri, RecordNotReadyError, requireRecord, restoreSnapshot, type RecordAdapters, type RecordStorage } from './record';
 import { nodeExecutor } from './testing/node-executor';
+import * as runner from './runner';
 
 const root = 'file:///test/Application%20Support/Motive';
 function fileStorage() {
@@ -18,6 +19,12 @@ function fileStorage() {
     exists: jest.fn(async (path) => files.has(path)),
     remove: jest.fn(async (path) => { for (const file of files) if (file === path || file.startsWith(`${path}/`)) files.delete(file); }),
     copy: jest.fn(async (from, to) => { if (!files.has(from)) throw new Error('missing'); files.add(to); }),
+    move: jest.fn(async (from, to, overwrite = false) => {
+      if (!files.has(from) || (files.has(to) && !overwrite)) throw new Error('invalid move');
+      for (const file of [...files]) if (file === from || file.startsWith(`${from}/`)) {
+        files.delete(file); files.add(to + file.slice(from.length));
+      }
+    }),
   };
   return { storage, files };
 }
@@ -33,7 +40,7 @@ function mockDatabase(version = 1) {
     }),
     run: jest.fn(async () => {}),
     getFirst: async <T>() => ({ user_version: version }) as T,
-    getAll: async <T>() => [{ integrity_check: 'ok' }] as T[],
+    getAll: async <T>(sql: string) => [{ [sql.includes('quick_check') ? 'quick_check' : 'integrity_check']: 'ok' }] as T[],
     transaction: jest.fn(async (work) => work(db)),
     close: jest.fn(async () => {}),
   };
@@ -140,7 +147,7 @@ test('erase closes owned connections and removes the entire tree, then succeeds 
 test('erase reports what remains and retries after an interrupted deletion', async () => {
   const { adapters, storage, files } = setup();
   jest.mocked(storage.remove).mockImplementationOnce(async () => { files.delete(`${root}/record.sqlite`); throw new Error('interrupted'); });
-  expect(await eraseRecord(adapters)).toEqual({ ok: false, remaining: [root] });
+  expect(await eraseRecord(adapters)).toEqual({ ok: false, remaining: [root, `${root}.erasing`] });
   expect(await eraseRecord(adapters)).toEqual({ ok: true });
 });
 
@@ -156,7 +163,7 @@ test('failed close prevents erasing files still in use and can be retried', asyn
 test('unverifiable erase never reports success', async () => {
   const { adapters, storage } = setup();
   storage.exists = async () => { throw new Error('unreadable'); };
-  expect(await eraseRecord(adapters)).toEqual({ ok: false, remaining: [root] });
+  expect(await eraseRecord(adapters)).toEqual({ ok: false, remaining: [root, `${root}.erasing`] });
 });
 
 test('restore removes db sidecars, preserves snapshot, closes handle and supports reopening', async () => {
@@ -187,13 +194,164 @@ test('restore with no snapshot leaves the database intact', async () => {
   expect(files.has(`${root}/record.sqlite`)).toBe(true);
 });
 
-test('snapshot VACUUM binds a decoded filesystem path, not a URI', async () => {
+test('fresh install never snapshots an empty database', async () => {
   const { adapters, db } = setup(0);
+  await adapters.storage.remove(`${root}/record.snapshot.sqlite`);
   const paths: SqlParams[] = [];
   db.run = async (_sql, params = []) => { paths.push(params); };
   const result = await openRecord(adapters);
-  expect(paths).toEqual([['/test/Application Support/Motive/record.snapshot.sqlite']]);
+  expect(paths).toEqual([]);
+  expect(result.snapshotExists).toBe(false);
   if (result.status === 'ready') await result.handle.close();
+});
+
+test('snapshot VACUUM binds a decoded temporary filesystem path before replacement', async () => {
+  const { adapters, db, files } = setup();
+  const paths: SqlParams[] = [];
+  db.run = async (_sql, params = []) => {
+    paths.push(params);
+    files.add(`${root}/record.snapshot.sqlite.tmp`);
+  };
+  jest.spyOn(runner, 'migrateRecord').mockImplementationOnce(async (_db, snapshot) => { await snapshot(); return null; });
+  const result = await openRecord(adapters);
+  expect(paths).toEqual([['/test/Application Support/Motive/record.snapshot.sqlite.tmp']]);
+  expect(files.has(`${root}/record.snapshot.sqlite`)).toBe(true);
+  expect(files.has(`${root}/record.snapshot.sqlite.tmp`)).toBe(false);
+  if (result.status === 'ready') await result.handle.close();
+});
+
+function diskStorage(directory: string): RecordStorage {
+  return {
+    root: directory,
+    prepare: jest.fn(async () => { mkdirSync(directory, { recursive: true }); }),
+    exists: async (path) => existsSync(path),
+    remove: async (path) => { rmSync(path, { recursive: true, force: true }); },
+    copy: async (from, to) => { copyFileSync(from, to); },
+    move: async (from, to) => { renameSync(from, to); },
+    readText: async (path) => readFileSync(path, 'utf8'),
+    writeText: async (path, text) => { writeFileSync(path, text); },
+  };
+}
+
+async function diskRecord() {
+  const directory = mkdtempSync(join(tmpdir(), 'motive-restart-'));
+  const storage = diskStorage(join(directory, 'Motive'));
+  await storage.prepare();
+  const db = nodeExecutor(join(storage.root, 'record.sqlite'));
+  await db.exec(readFileSync(join(__dirname, '__fixtures__/schema-v1.sql'), 'utf8'));
+  await db.exec("CREATE TABLE witness(value TEXT); INSERT INTO witness VALUES ('saved record');");
+  await db.close();
+  await storage.copy(`${storage.root}/record.sqlite`, `${storage.root}/record.snapshot.sqlite`);
+  const adapters: RecordAdapters = { storage, openDatabase: jest.fn(async (root, name) => nodeExecutor(join(root, name))) };
+  return { directory, storage, adapters };
+}
+
+test.each(['after rename', 'mid-delete'])('cold open finishes interrupted erase: %s', async (step) => {
+  const { directory, storage, adapters } = await diskRecord();
+  const trash = `${storage.root}.erasing`;
+  try {
+    if (step === 'after rename') {
+      const move = storage.move;
+      storage.move = jest.fn(async (from, to) => { await move(from, to); throw new Error('interrupted'); });
+    } else {
+      const remove = storage.remove;
+      storage.remove = jest.fn(async (path) => {
+        if (path === trash) { await remove(`${trash}/record.sqlite`); throw new Error('interrupted'); }
+        await remove(path);
+      });
+    }
+    expect((await eraseRecord(adapters)).ok).toBe(false);
+    expect(existsSync(storage.root)).toBe(false);
+    expect(existsSync(trash)).toBe(true);
+    const originalRemove = diskStorage(storage.root).remove;
+    storage.remove = async () => { throw new Error('still blocked'); };
+    jest.mocked(storage.prepare).mockClear();
+    expect(await openRecord(adapters)).toMatchObject({ status: 'failed', failure: { code: 'openFailed' } });
+    expect(storage.prepare).not.toHaveBeenCalled();
+    expect(adapters.openDatabase).not.toHaveBeenCalled();
+    expect(existsSync(`${trash}/record.snapshot.sqlite`)).toBe(true);
+    storage.remove = originalRemove;
+    const result = await openRecord(adapters);
+    expect(result).toMatchObject({ status: 'ready', snapshotExists: false });
+    expect(existsSync(trash)).toBe(false);
+    if (result.status === 'ready') await result.handle.close();
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test.each(['marker', 'staged copy', 'db removal', 'staged move'])('cold open resumes restore interrupted after %s without resetting data', async (step) => {
+  const { directory, storage, adapters } = await diskRecord();
+  const base = diskStorage(storage.root);
+  const marker = `${storage.root}/restore-pending`;
+  try {
+    if (step === 'marker') storage.writeText = async (path, value) => { await base.writeText(path, value); throw new Error('interrupted'); };
+    if (step === 'staged copy') storage.copy = async (from, to) => { await base.copy(from, to); throw new Error('interrupted'); };
+    if (step === 'db removal') storage.remove = async (path) => {
+      await base.remove(path);
+      if (path === `${storage.root}/record.sqlite`) throw new Error('interrupted');
+    };
+    if (step === 'staged move') storage.move = async (from, to) => { await base.move(from, to); throw new Error('interrupted'); };
+    expect(await restoreSnapshot(adapters)).toEqual({ ok: false, code: 'restoreFailed' });
+    expect(existsSync(marker)).toBe(true);
+    storage.remove = base.remove;
+    storage.move = base.move;
+    storage.copy = async () => { throw new Error('disk full'); };
+    jest.mocked(storage.prepare).mockClear();
+    expect(await openRecord(adapters)).toMatchObject({ status: 'failed', failure: { code: 'openFailed' } });
+    expect(adapters.openDatabase).not.toHaveBeenCalled();
+    expect(storage.prepare).not.toHaveBeenCalled();
+    expect(existsSync(marker)).toBe(true);
+    storage.copy = base.copy;
+    const result = await openRecord(adapters);
+    expect(result.status).toBe('ready');
+    if (result.status === 'ready') {
+      expect(await result.handle.getAll('SELECT value FROM witness')).toEqual([{ value: 'saved record' }]);
+      await result.handle.close();
+    }
+    expect(existsSync(marker)).toBe(false);
+    expect(existsSync(`${storage.root}/record.restore.sqlite`)).toBe(false);
+    expect(existsSync(`${storage.root}/record.snapshot.sqlite`)).toBe(true);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('pending restore with a missing snapshot blocks before SQLite can create a fresh record', async () => {
+  const { directory, storage, adapters } = await diskRecord();
+  try {
+    await storage.writeText(`${storage.root}/restore-pending`, 'pending');
+    await storage.remove(`${storage.root}/record.sqlite`);
+    await storage.remove(`${storage.root}/record.snapshot.sqlite`);
+    expect(await openRecord(adapters)).toMatchObject({ status: 'failed', failure: { code: 'openFailed' } });
+    expect(adapters.openDatabase).not.toHaveBeenCalled();
+    expect(existsSync(`${storage.root}/record.sqlite`)).toBe(false);
+    expect(existsSync(`${storage.root}/restore-pending`)).toBe(true);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test.each([false, true])('snapshot replacement preserves previous recovery point until VACUUM succeeds (failure=%s)', async (failure) => {
+  const { directory, storage, adapters } = await diskRecord();
+  try {
+    const previous = readFileSync(`${storage.root}/record.snapshot.sqlite`);
+    const db = nodeExecutor(`${storage.root}/record.sqlite`);
+    await db.exec("INSERT INTO witness VALUES ('newer write')");
+    await db.close();
+    // Exercise openRecord's snapshot operation independently of the shipped v1 registry.
+    jest.spyOn(runner, 'migrateRecord').mockImplementationOnce(async (_db, snapshot) => {
+      if (failure) _db.run = async () => { throw new Error('disk full'); };
+      try { await snapshot(); } catch { return { code: 'migrationFailed', from: 1, to: 2 }; }
+      return null;
+    });
+    const result = await openRecord(adapters);
+    if (failure) {
+      expect(result.status).toBe('failed');
+      expect(readFileSync(`${storage.root}/record.snapshot.sqlite`)).toEqual(previous);
+    } else {
+      expect(result.status).toBe('ready');
+      const snapshot = nodeExecutor(`${storage.root}/record.snapshot.sqlite`);
+      expect(await snapshot.getAll('SELECT value FROM witness')).toHaveLength(2);
+      await snapshot.close();
+      expect(existsSync(`${storage.root}/record.snapshot.sqlite.tmp`)).toBe(false);
+    }
+    if (result.status === 'ready') await result.handle.close();
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test('ready accessor is unavailable after close, failed open, restore and erase', async () => {
