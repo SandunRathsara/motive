@@ -6,6 +6,7 @@ import type { SqlExecutor, SqlParams } from './executor';
 import { createLaunchSentinel, eraseRecord, openRecord, rawDatabaseUri, RecordNotReadyError, requireRecord, restoreSnapshot, type RecordAdapters, type RecordStorage } from './record';
 import { nodeExecutor } from './testing/node-executor';
 import * as runner from './runner';
+import { inspectVersion } from './inspect-version';
 
 const root = 'file:///test/Application%20Support/Motive';
 function fileStorage() {
@@ -245,6 +246,25 @@ async function diskRecord() {
   const adapters: RecordAdapters = { storage, openDatabase: jest.fn(async (root, name) => nodeExecutor(join(root, name))) };
   return { directory, storage, adapters };
 }
+
+test('device preflight refuses a newer version in WAL without touching the original or sidecars', async () => {
+  const { directory, storage, adapters } = await diskRecord();
+  const path = join(storage.root, 'record.sqlite');
+  const writer = nodeExecutor(path);
+  try {
+    await writer.exec('PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA user_version=99;');
+    const hashes = () => ['', '-wal', '-shm'].map((suffix) => createHash('sha256').update(readFileSync(path + suffix)).digest('hex'));
+    const before = hashes();
+    adapters.inspectVersion = () => inspectVersion(storage, adapters.openDatabase);
+    expect(await openRecord(adapters)).toMatchObject({ status: 'failed', failure: { code: 'newerSchema', found: 99, supported: 1 } });
+    expect(hashes()).toEqual(before);
+    expect(jest.mocked(adapters.openDatabase).mock.calls.every(([, name]) => name === 'record.inspect.sqlite')).toBe(true);
+    expect(existsSync(join(storage.root, 'record.inspect.sqlite'))).toBe(false);
+  } finally {
+    await writer.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test.each(['after rename', 'mid-delete'])('cold open finishes interrupted erase: %s', async (step) => {
   const { directory, storage, adapters } = await diskRecord();

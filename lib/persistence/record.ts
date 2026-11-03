@@ -19,6 +19,8 @@ export interface RecordStorage {
 export interface RecordAdapters {
   storage: RecordStorage;
   openDatabase(directory: string, name: string): Promise<SqlExecutor>;
+  /** Device preflight must not open or alter the original SQLite files. */
+  inspectVersion?(): Promise<number | null>;
   integrity?: typeof checkIntegrity;
 }
 export type RecordHandle = SqlExecutor;
@@ -132,10 +134,12 @@ export function openRecord(adapters?: RecordAdapters): Promise<OpenRecordResult>
       await finishRestore(storage);
       snapshotExists = await storage.exists(`${storage.root}/${snapshotName}`);
       await storage.prepare();
+      const inspected = await resolved.inspectVersion?.();
+      const supported = supportedVersion(migrations);
+      if (inspected != null && inspected > supported) return fail({ code: 'newerSchema', found: inspected, supported });
       db = tracked(await resolved.openDatabase(storage.root, name), storage.root);
       // WAL changes the file header: refuse newer schemas before any write-capable PRAGMA.
       const found = await schemaVersion(db);
-      const supported = supportedVersion(migrations);
       if (found > supported) return fail({ code: 'newerSchema', found, supported });
       await db.exec('PRAGMA secure_delete = ON; PRAGMA foreign_keys = ON;');
       try {

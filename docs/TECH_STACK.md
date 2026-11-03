@@ -202,6 +202,10 @@ Open gates requiring a record before implementation:
   - **Owner provisioning:** manually run `eas login` and `eas init`, commit the resulting `extra.eas.projectId` in `app.config.ts`, register the iPhone with `eas device:create`, and authorize paid-account signing credentials. Use the release workflow for standalone installs, install the correct variant, and push its tag. A development-client install must also receive its matching build tag before installation.
 - **Consequences:** device registration, credentials, cloud builds, installation and tag pushes need owner access. Configured profiles alone are not evidence of a successful installed build; device checks remain in the slice checklist.
 
+### Bootstrap simulator amendments (3 November 2026)
+
+- **Newer-schema preservation:** device opens first inspect a disposable database/WAL copy in the backup-excluded Motive directory. Even reading `user_version` on the original through SQLite can delete sidecars on close. The probe includes uncheckpointed WAL writes, is removed after inspection, and refuses newer versions before opening the original. This adds local copy I/O to cold open; real-device UX-7 timing remains required.
+
 ## 7. Quality gates
 
 `package.json` owns the executable commands. `verify` runs the following five gates in order and stops at the first failure; absence or non-execution of a gate is not a pass.

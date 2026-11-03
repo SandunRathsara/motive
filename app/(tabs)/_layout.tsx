@@ -4,7 +4,7 @@ import { ShellTabBar } from '@/components/organisms/ShellTabBar';
 export default function TabLayout() {
   return (
     <Tabs
-      tabBar={ShellTabBar}
+      tabBar={(props) => <ShellTabBar {...props} />}
       screenOptions={{ headerShown: false, animation: 'none' }}
     >
       <Tabs.Screen name="index" options={{ title: 'Today', tabBarAccessibilityLabel: 'Today' }} />

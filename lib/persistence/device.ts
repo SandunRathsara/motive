@@ -3,11 +3,12 @@ import { openDatabaseAsync } from 'expo-sqlite';
 import { recordDirectoryModule } from '@/lib/native/record-directory';
 import { serializeExecutor } from './executor';
 import type { RecordAdapters } from './record';
+import { inspectVersion } from './inspect-version';
 
 export async function deviceAdapters(): Promise<RecordAdapters> {
   const native = recordDirectoryModule();
   const root = (await native.directory()).replace(/\/$/, '');
-  return {
+  const adapters: RecordAdapters = {
     storage: {
       root,
       prepare: async () => {
@@ -52,4 +53,6 @@ export async function deviceAdapters(): Promise<RecordAdapters> {
       });
     },
   };
+  adapters.inspectVersion = () => inspectVersion(adapters.storage, adapters.openDatabase);
+  return adapters;
 }
