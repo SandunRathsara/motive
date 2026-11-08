@@ -70,6 +70,7 @@ test('shares one validated snapshot with canonical metrics and local-date filena
   expect(share.share).toHaveBeenCalledWith({ uri: join(root, 'export-staging/motive-export-2026-11-08.json'), mimeType: 'application/json', uti: 'public.json', dialogTitle: 'Export Motive data' });
   expect(await storage.exists(join(root, 'export-staging/motive-export-2026-11-08.json'))).toBe(false);
   expect(useRecordLifecycle.getState().phase).toBe('ready');
+  expect(logged).toHaveBeenCalledWith('export_finished', { count: 1 });
 });
 
 test.each([

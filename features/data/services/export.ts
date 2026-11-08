@@ -39,6 +39,7 @@ export function createExportService(deps: ExportDependencies) {
       let storage: RecordStorage | undefined;
       let staged: string | undefined;
       let outcome: ExportResult;
+      let exportedCount = 0;
       let failure: Exclude<ExportErrorCode, 'busy'> = 'validationFailed';
       const checkCancelled = () => {
         if (signal?.aborted) { failure = 'cancelled'; throw new Error('cancelled'); }
@@ -76,6 +77,7 @@ export function createExportService(deps: ExportDependencies) {
           outcome = result;
         } else {
           const skippedCount = Object.values(envelope.skippedRowCounts).reduce((total, count) => total + count, 0);
+          exportedCount = Object.values(snapshot.sections).reduce<number>((total, section) => total + (section as { records: unknown[] }).records.length, 0);
           outcome = { ok: true, skippedCount, skippedRowCounts: envelope.skippedRowCounts };
         }
       } catch (error) {
@@ -88,7 +90,7 @@ export function createExportService(deps: ExportDependencies) {
         logEvent('export_failed', { errorCode: 'cleanupFailed' });
         outcome = { ok: false, code: 'cleanupFailed' };
       } finally { lifecycle.endExport(); }
-      if (outcome.ok) logEvent('export_finished', { count: outcome.skippedCount });
+      if (outcome.ok) logEvent('export_finished', { count: exportedCount });
       return outcome;
     },
     /** Launch-only: openRecord.prepare recreates this backup-excluded directory. */
