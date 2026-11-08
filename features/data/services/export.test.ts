@@ -7,6 +7,8 @@ import { migrateRecord } from '@/lib/persistence/runner';
 import { nodeExecutor } from '@/lib/persistence/testing/node-executor';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
 import { exerciseLibrary, exerciseLibraryVersion } from '@/features/workouts';
+import { completeOnboarding } from '@/features/onboarding';
+import { createPlanStore } from '@/features/plan';
 import { exportEnvelopeSchema } from '../data.schemas';
 import { exportSections } from '../registry/export-sections';
 import { createExportService } from './export';
@@ -15,6 +17,11 @@ import type { ShareAdapter } from './share';
 const build = { variant: 'verification', version: '1.0.0', buildNumber: '2', buildId: '1.0.0+2', gitTag: 'build/verification/1.0.0+2' } as const;
 const metricId = '11111111-1111-4111-8111-111111111111';
 const emptyCounts = { gateMetrics: 0, healthSignals: 0, profile: 0, plan: 0, exerciseLibrary: 0 };
+const onboardingInput = {
+  sex: 'male', age: 30, heightCm: 180, activityLevel: 1.5, weightKg: 80,
+  weightOrigin: { kind: 'health', sampleTime: Date.parse('2026-11-07T18:30:00Z'), sourceName: 'Scale' },
+  goal: 'fatLoss', ratePreset: -0.5, weeklySessionTarget: 3,
+} as const;
 let root: string;
 let db: SqlExecutor;
 let storage: RecordStorage;
@@ -77,6 +84,39 @@ test('shares one validated snapshot with canonical metrics and local-date filena
   expect(logged).toHaveBeenCalledWith('export_finished', { count: 31 });
 });
 
+test('the export describes Profile provenance, the starting estimate and version programs without a library lookup', async () => {
+  const now = Date.parse('2026-11-07T19:00:00Z');
+  const initial = await completeOnboarding(onboardingInput, { connection: db, now: () => now });
+  const program = initial.version.snapshot.trainingProgram;
+  await createPlanStore({ connection: db, now: () => now + 1000 }).appendVersion('Your edit', {
+    trainingProgram: { rotation: [{ ...program.rotation[0], name: 'Full Body A' }] },
+  });
+  expect(await service().export()).toEqual({ ok: true, skippedCount: 0, skippedRowCounts: emptyCounts });
+  const envelope = exportEnvelopeSchema.parse(captured);
+  expect(envelope.formatVersion).toBe(1);
+  expect(envelope.sections.profile).toEqual({ version: 1, owner: 'profile', records: [{
+    sex: 'male', age: 30, heightCm: 180, activityLevel: 1.5, weightKg: 80,
+    weightOrigin: { kind: 'health', sampleTime: '2026-11-08T00:00:00.000+05:30', sourceName: 'Scale' },
+    createdAt: '2026-11-08T00:30:00.000+05:30',
+  }] });
+  const exercises = [
+    { id: 'full-body-back-squat', exerciseId: 'back-squat', name: 'Back Squat', libraryVersion: 1, workingSets: 3, repRange: { min: 6, max: 10 }, incrementKg: 2.5 },
+    { exerciseId: 'bench-press', name: 'Bench Press', libraryVersion: 1 },
+    { exerciseId: 'lat-pulldown', name: 'Lat Pulldown', libraryVersion: 1 },
+    { exerciseId: 'romanian-deadlift', name: 'Romanian Deadlift', libraryVersion: 1 },
+    { exerciseId: 'dumbbell-shoulder-press', name: 'Dumbbell Shoulder Press', libraryVersion: 1 },
+  ];
+  const original = { rotation: [{ id: 'full-body', name: 'Full Body', exercises }] };
+  const edited = { rotation: [{ id: 'full-body', name: 'Full Body A', exercises }] };
+  expect(envelope.sections.plan).toMatchObject({ version: 1, owner: 'plan', records: [
+    { kind: 'startingEstimate', valueKcal: 2670, createdAt: '2026-11-08T00:30:00.000+05:30' },
+    { kind: 'planVersion', number: 2, source: 'Your edit', sourceRef: null, createdAt: '2026-11-08T00:30:01.000+05:30', snapshot: { trainingProgram: edited }, diff: { trainingProgram: { from: original, to: edited } } },
+    { kind: 'planVersion', number: 1, source: 'Starting plan', sourceRef: null, snapshot: { kcalTarget: 2250, proteinFloorG: 144, trainingProgram: original }, diff: { trainingProgram: { from: null, to: original } } },
+  ] });
+  expect(envelope.sections.exerciseLibrary.records).toHaveLength(30);
+  expect(envelope.sections.exerciseLibrary.records).toContainEqual({ id: 'back-squat', name: 'Back Squat', muscleGroup: 'quadriceps', equipment: 'barbell', bodyweight: false, libraryVersion: 1 });
+});
+
 test.each([
   ['ENOSPC: no space left on device', 'storageFull'],
   ['disk full', 'storageFull'],
@@ -94,6 +134,58 @@ test('invalid stored rows remain on disk, but are skipped and counted in both fi
   expect(await service().export()).toEqual({ ok: true, skippedCount: 1, skippedRowCounts: { ...emptyCounts, gateMetrics: 1 } });
   expect(captured).toMatchObject({ skippedRowCounts: { gateMetrics: 1 }, sections: { gateMetrics: { records: [{ id: metricId }] } } });
   expect(await db.getFirst('SELECT count(*) AS count FROM gate_metric')).toEqual({ count: 2 });
+});
+
+test('invalid Profile, estimate, version and unreferenced library rows have exact owning-section counts', async () => {
+  await completeOnboarding(onboardingInput, { connection: db });
+  await db.exec("UPDATE profile SET weight_origin_json = 'not JSON'; UPDATE starting_estimate SET value_kcal = -1; UPDATE exercise_library SET name = '' WHERE id = 'leg-press';");
+  await db.run('INSERT INTO plan_version VALUES (2, 1, ?, NULL, ?, ?)', ['Your edit', '{bad JSON', '{}']);
+  await db.run('INSERT INTO plan_version VALUES (3, 2, ?, NULL, ?, ?)', ['Your edit', 'null', '{}']);
+  const counts = { ...emptyCounts, profile: 1, plan: 3, exerciseLibrary: 1 };
+  expect(await service().export()).toEqual({ ok: true, skippedCount: 5, skippedRowCounts: counts });
+  const envelope = exportEnvelopeSchema.parse(captured);
+  expect(envelope.skippedRowCounts).toEqual(counts);
+  expect(envelope.sections.profile.records).toEqual([]);
+  expect(envelope.sections.plan.records).toMatchObject([{ kind: 'planVersion', number: 1 }]);
+  expect(envelope.sections.exerciseLibrary.records).toHaveLength(29);
+  // A second export reports the same corruption: export never deletes invalid rows.
+  expect(await service().export()).toEqual({ ok: true, skippedCount: 5, skippedRowCounts: counts });
+});
+
+test('unresolvable snapshot or old diff references skip each affected version once, not once per reference', async () => {
+  const initial = await completeOnboarding(onboardingInput, { connection: db });
+  const program = initial.version.snapshot.trainingProgram;
+  const template = program.rotation[0];
+  const store = createPlanStore({ connection: db });
+  await store.appendVersion('Your edit', { trainingProgram: { rotation: [{ ...template, exercises: [
+    { ...template.exercises[0], exerciseId: 'leg-press' }, ...template.exercises.slice(1),
+  ] }] } });
+  await store.appendVersion('Your edit', { proteinFloorG: 150 });
+  await db.run("UPDATE exercise_library SET name = '' WHERE id = 'back-squat'");
+  const counts = { ...emptyCounts, plan: 2, exerciseLibrary: 1 };
+  expect(await service().export()).toEqual({ ok: true, skippedCount: 3, skippedRowCounts: counts });
+  const envelope = exportEnvelopeSchema.parse(captured);
+  expect(envelope.skippedRowCounts).toEqual(counts);
+  expect(envelope.sections.plan.records).toMatchObject([
+    { kind: 'startingEstimate', valueKcal: 2670 },
+    { kind: 'planVersion', number: 3, snapshot: { trainingProgram: { rotation: [{ exercises: [
+      { exerciseId: 'leg-press', name: 'Leg Press', libraryVersion: 1 }, {}, {}, {}, {},
+    ] }] } } },
+  ]);
+});
+
+test('exercise labels and library versions come from the same stored snapshot as the exported library', async () => {
+  await completeOnboarding(onboardingInput, { connection: db });
+  await db.run("UPDATE exercise_library SET name = ?, library_version = 2 WHERE id = 'back-squat'", ['Back Squat (revised label)']);
+  expect((await service().export()).ok).toBe(true);
+  const envelope = exportEnvelopeSchema.parse(captured);
+  expect(envelope.sections.plan.records).toMatchObject([
+    { kind: 'startingEstimate' },
+    { kind: 'planVersion', snapshot: { trainingProgram: { rotation: [{ exercises: [
+      { exerciseId: 'back-squat', name: 'Back Squat (revised label)', libraryVersion: 2 }, {}, {}, {}, {},
+    ] }] } } },
+  ]);
+  expect(envelope.sections.exerciseLibrary.records).toContainEqual({ id: 'back-squat', name: 'Back Squat (revised label)', muscleGroup: 'quadriceps', equipment: 'barbell', bodyweight: false, libraryVersion: 2 });
 });
 
 test('section records keep their cross-section relationship IDs across repeated exports', async () => {

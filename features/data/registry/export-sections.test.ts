@@ -12,6 +12,7 @@ test('every migrated table is exported or explicitly excluded as migration bookk
     const keys = exportSections.map(({ key }) => key);
     expect(new Set(keys).size).toBe(keys.length);
     const claims = exportSections.flatMap(({ tables }) => [...tables]);
+    expect(new Set(claims).size).toBe(claims.length);
     for (const claimed of claims) expect(tables).toContain(claimed);
     for (const [excluded, reason] of Object.entries(excludedTables)) {
       expect(tables).toContain(excluded);
