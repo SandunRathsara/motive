@@ -106,6 +106,14 @@ test.each([
     .toEqual({ kcal, reason: 'sexMinimum', bmrKcal, sexMinimumKcal: kcal });
 });
 
+test('a fractional floor clamps to the next whole kcal, never below the floor', () => {
+  // BMR: 800 + 1127.5 - 165 + 5 = 1767.5; 2297.75 − 660 → 1650 is below it.
+  expect(calculateStartingPlan({
+    sex: 'male', age: 33, heightCm: 180.4, activityLevel: 1.3,
+    weightKg: 80, goal: 'fatLoss', ratePreset: -0.75,
+  })).toMatchObject({ floor: { kcal: 1767.5 }, kcalTarget: 1768, clamped: true });
+});
+
 test('a sex-minimum-limited start clamps to 1500 kcal', () => {
   const result = calculateStartingPlan({
     sex: 'male', age: 30, heightCm: 165, activityLevel: 1.3,

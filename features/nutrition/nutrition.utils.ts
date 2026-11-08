@@ -26,8 +26,8 @@ export function calculateStartingPlan(input: StartingPlanInput): StartingPlan {
     expenditureEstimateKcal,
     offsetKcal,
     floor,
-    // ONB-2 rounds first; NUT-8 then applies the exact floor, even between 50-kcal steps.
-    kcalTarget: Math.max(roundedKcal, floor.kcal),
+    // ONB-2 rounds first; NUT-8 then clamps to the floor (whole kcal, never below), even between 50-kcal steps.
+    kcalTarget: Math.max(roundedKcal, Math.ceil(floor.kcal)),
     clamped,
     suggestedSlowerPreset: clamped && input.goal === 'fatLoss'
       ? [...goalRatePresets.fatLoss].reverse().find((rate) => rate > input.ratePreset) ?? null
