@@ -45,6 +45,7 @@ export default function RootLayout() {
   else content = <Stack screenOptions={{ animation: 'none', headerTransparent: false }}>
     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+    <Stack.Screen name="settings/target" options={{ title: 'Edit targets' }} />
     <Stack.Screen name="settings/report" options={{ title: 'Phase 1 report' }} />
     <Stack.Screen name="settings/about" options={{ title: 'About' }} />
     <Stack.Screen name="settings/signals" options={{ title: 'Health Signals' }} />

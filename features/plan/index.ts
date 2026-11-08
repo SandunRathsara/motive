@@ -6,3 +6,5 @@ export type { PlanStatus, PlanAppendResult } from './services/plan-store';
 export { planKeys } from './hooks/query-keys';
 export { useCurrentPlan } from './hooks/useCurrentPlan';
 export { planExportSection } from './services/export-section';
+export type { TodayPlanViewModel } from './plan.view-models';
+export { useTodayPlan } from './hooks/useTodayPlan';
