@@ -99,10 +99,15 @@ _Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRath
 
 ### 5.1 Onboarding and profile (ONB)
 
-- **ONB-1** Onboarding collects, by typing or picking: sex, age, height (cm), weight (kg), daily activity level (three levels), Goal and rate preset (§5.5), and the weekly session target (1–6). It then creates the **Training Program** from the editable starter template (§5.3). Whether any value can be prefilled from Health, and the number of screens, are open (§11).
-- **ONB-2** The starting kcal target is the Mifflin-St Jeor BMR × an activity factor of 1.3, 1.5 or 1.7 for the chosen level, plus the Goal's daily offset (NUT-1). It is shown as one number, labelled a starting estimate until the first adaptive review. The starting protein floor follows NUT-2. Onboarding creates Plan v1.
+- **ONB-1** Onboarding collects, by typing or picking: sex, age, height (cm), weight (kg), daily activity level (three levels), Goal and rate preset (§5.5), and the weekly session target (1–6). It then creates the **Training Program** from the editable starter template (§5.3).
+  - Bounds: age 18–90, height 120–230 cm, weight 35–250 kg.
+  - Activity levels: "Mostly sitting" (1.3), "On my feet part of the day" (1.5), "Physically demanding day" (1.7).
+  - An opt-in **Use Apple Health** control prefills weight only, from a known Trend Weight, with its source and age. It requests authorization if `notRequested` and runs a bounded sync. Unknown, unavailable or slow Health data falls back to typing. The value stays editable. It is a Profile input, never a Health Sample or weigh-in, and never feeds Trend Weight.
+- **ONB-2** The starting kcal target is the Mifflin-St Jeor BMR × the chosen activity factor, plus the Goal's daily offset (NUT-1). The calculation uses the ONB-1 weight, not a weigh-in. Round kcal to the nearest 50 and apply the NUT-8 floor clamp, with a notice if capped. It is shown as one number, labelled a starting estimate until the first adaptive review or a manual kcal edit. The starting protein floor follows NUT-2, rounded to the nearest gram. Onboarding creates Plan v1.
 - **ONB-3** Consents are not part of onboarding. Each one is asked before its first network use (COACH-3, FOOD-2).
 - **ONB-4** Delete all data returns the app to onboarding (DATA-3).
+
+_Decided in: [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
 
 ### 5.2 Today (TODAY)
 
@@ -113,7 +118,7 @@ _Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRath
   - the next Session Template in the rotation with a one-tap **Start** in the bottom third, or **Resume** for an active session;
   - at most **one coaching recommendation slot**;
   - at most **one trend line** (SIG-10);
-  - the Plan Version chip when the plan has changed ("Plan v3 · changed today");
+  - the current Plan Version chip only on the version's creation day ("Plan v3 · changed today"; Plan v1 shows "Plan v1");
   - the Under-Floor notice (NUT-10) and any data Escalation Card (SAFE-6).
 - **TODAY-2** A pending Plan Change always takes the recommendation slot. With no pending Plan Change, the slot is hidden.
 - **TODAY-3** There is **no readiness word and no score.** Values tied to today show "not yet available" until their sample arrives (SIG-8), never as an error.
@@ -121,9 +126,12 @@ _Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRath
 - **TODAY-5** A quick-add control is always visible, offering **Food** (FOOD-1) and **Set**. Set resumes the active session, or otherwise opens the next session in the rotation.
 - **TODAY-6** Zero state: a new day shows yesterday's summary and a single log-food action. Today is never blank.
 
+_Decided in: [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
+
 ### 5.3 Training (TRN)
 
 - **TRN-1** **Training Program:** the user writes it as an ordered rotation of **Session Templates**. Each template lists exercises from a small built-in exercise library (name, muscle group, equipment, bodyweight flag), each with a working-set count, a rep range and a load increment. One editable starter template ships, so the first session isn't blank. Motive never generates programming.
+  - The starter rotation contains one Session Template, "Full Body": Back Squat 3 × 6–10, Bench Press 3 × 6–10, Lat Pulldown 3 × 8–12, Romanian Deadlift 3 × 8–12 and Dumbbell Shoulder Press 2 × 8–12, with TRN-5 default increments; the library has about 30 exercises across ten muscle groups, using barbell, dumbbell, machine, cable or none.
 - **TRN-2** **Schedule:**
   - The weekly session target is 1–6.
   - A training week runs Monday–Sunday under the 04:00 boundary.
@@ -172,7 +180,7 @@ _Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRath
 - **TRN-12** The user's own edits to the Training Program or its templates take effect immediately as a Plan Version with the source *Your edit* (PLAN-5). They are not Plan Changes.
 - **TRN-13** All of training works offline.
 
-_Decided in: [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12)._
+_Decided in: [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
 
 ### 5.4 Food capture (FOOD)
 
@@ -229,10 +237,12 @@ _Decided in: [Food capture contract](https://github.com/SandunRathsara/motive/is
   - **Maintenance:** 0, with a ±0.1 tolerance band inside which nothing is proposed.
   - **Muscle Gain:** presets +0.1 / **+0.25 (default)** / +0.4; never faster than +0.5.
   - **Daily energy offset** = rate × Trend Weight × 7,700 ÷ 7. One 7,700 kcal/kg constant applies in both directions.
+  - At onboarding, use the ONB-1 weight, never as a weigh-in. Later, if Trend Weight is unknown, use the latest known Trend Weight, otherwise the Profile weight.
 - **NUT-2** **Targets:**
   - a **kcal target**;
   - a **protein floor** of 1.8 g/kg Trend Weight for Fat Loss and 1.6 g/kg for Maintenance and Muscle Gain;
-  - a fat minimum of 0.6 g/kg, checked but not shown on Today.
+  - a fat minimum of 0.6 g/kg, computed and shown on the starting plan, but not enforced or shown on Today.
+  Starting protein and fat values use the ONB-1 weight, not a weigh-in. Round the protein floor to the nearest gram.
   There is no carb target, and every day has the same target.
 - **NUT-3** **Goal framing:** every Goal shows kcal against the target and protein against the floor. Muscle Gain also shows a rate-of-gain status, and gaining faster than planned is framed as such, never as praise. No red shame states.
 - **NUT-4** **Active energy** is not read and not used. The **Expenditure Estimate** already reflects real activity.
@@ -259,7 +269,8 @@ _Decided in: [Food capture contract](https://github.com/SandunRathsara/motive/is
     - No single Plan Change moves the target more than 250 kcal.
   - Edits or deletions made after a review affect only the next review.
 - **NUT-8** **Floor** = the higher of the BMR at current Trend Weight and 1,200 kcal (female) / 1,500 kcal (male).
-  - The rule never proposes below the floor. If the chosen rate would need it, the rule proposes the floor and says the rate isn't reachable, suggesting a slower preset.
+  - At onboarding, use the ONB-1 weight, not a weigh-in. Later, if Trend Weight is unknown, use the latest known Trend Weight, otherwise the Profile weight.
+  - Starting targets, Goal or preset edits and rule proposals never go below the floor. If the chosen rate would need it, clamp to the floor and say the rate isn't reachable, suggesting a slower preset.
   - A manual kcal target below the floor is refused in Settings, with the floor and its reason shown.
 - **NUT-9** **Rate guardrails** (same minimum evidence):
   - **Fat Loss observed faster than 1.0%/wk:** propose an increase toward the goal rate, never a decrease.
@@ -271,8 +282,9 @@ _Decided in: [Food capture contract](https://github.com/SandunRathsara/motive/is
 - **NUT-11** **Protein floor Plan Change:** the protein floor is recalculated only through its own Plan Change, proposed when Trend Weight has moved ≥ 3 kg since the floor was last set.
 - **NUT-12** **User edits:**
   - Changing the Goal, rate preset, kcal target or protein floor in Settings takes effect immediately as a *Your edit* Plan Version, not a Plan Change.
+  - A Goal or preset edit sets kcal to the starting estimate plus the new daily offset, rounded to the nearest 50 and clamped to the floor with a notice (NUT-8). The protein floor is kept.
   - A Goal change restarts the 7-day review clock and keeps the estimate history. It also withdraws any pending nutrition proposal (PLAN-3).
-  - Manual kcal targets are still checked against the floor.
+  - Manual kcal targets are still checked against the floor. A manual kcal edit drops the "starting estimate" label.
 - **NUT-13** **Nutrition Evidence Snapshot** holds aggregates only:
   - the window dates;
   - Logged Days over total days, and the weigh-in count;
@@ -282,7 +294,7 @@ _Decided in: [Food capture contract](https://github.com/SandunRathsara/motive/is
   - the previous and proposed targets, and the goal rate;
   - whether the floor or the 250 kcal cap applied.
 
-_Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/motive/issues/10); [Safety escalation triggers and detection](https://github.com/SandunRathsara/motive/issues/17); [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12)._
+_Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/motive/issues/10); [Safety escalation triggers and detection](https://github.com/SandunRathsara/motive/issues/17); [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
 
 ### 5.6 Health Signals (SIG)
 
@@ -361,6 +373,7 @@ _Decided in: [Health signal read set and provenance policy](https://github.com/S
   - kcal and protein are never bundled.
 - **PLAN-6** **Plan Versions:**
   - One sequence ("Plan v1, v2, …") covers nutrition targets and the Training Program, and is only ever added to.
+  - Onboarding creates Plan v1 with the source *Starting plan*.
   - Every applied Plan Change, user edit and revert creates a version, recording the changed fields (from → to) and its source: *Plan Change #n*, *Your edit* or *Revert of #n*.
   - Any version that changes nutrition targets resets the 7-day nutrition review clock. A training-only version doesn't.
 - **PLAN-7** **Taking effect:**
@@ -386,7 +399,7 @@ _Decided in: [Health signal read set and provenance policy](https://github.com/S
   - If the user wants a different value, it points to editing it in Settings, and it never offers its own number to apply.
   - Prose that contradicts the Plan Change's numbers fails validation, and the deterministic explanation is shown instead (AI-1).
 
-_Decided in: [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12)._
+_Decided in: [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
 
 ### 5.8 AI Coach (COACH)
 
@@ -477,7 +490,9 @@ _Decided in: [Safety escalation triggers and detection](https://github.com/Sandu
   - the Phase 1 report;
   - About, which credits "USDA FoodData Central".
 
-_Decided in: [Personal Health Record lifecycle](https://github.com/SandunRathsara/motive/issues/7); [AI data-transmission boundary](https://github.com/SandunRathsara/motive/issues/9); [Phase 1 Completion Gate measurement](https://github.com/SandunRathsara/motive/issues/13)._
+Profile editing is deferred to a follow-up issue, outside Slice 4.
+
+_Decided in: [Personal Health Record lifecycle](https://github.com/SandunRathsara/motive/issues/7); [AI data-transmission boundary](https://github.com/SandunRathsara/motive/issues/9); [Phase 1 Completion Gate measurement](https://github.com/SandunRathsara/motive/issues/13); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
 
 ## 6. Information architecture
 
@@ -506,8 +521,8 @@ _Decided in: [Personal Health Record lifecycle](https://github.com/SandunRathsar
 
 The entities below are indicative. Exact schemas are defined by each slice spec under PHR-1, and stable local IDs relate them.
 
-- **Profile:** sex, age, height, activity level.
-- **Plan Version:** number, created at, source (*Plan Change #n* / *Your edit* / *Revert of #n*), changed fields from → to. The current nutrition targets (Goal, rate preset, kcal target, protein floor) and Training Program are the latest version's state.
+- **Profile:** sex, age, height, activity level, onboarding weight and its origin (typed / Health, with sample time).
+- **Plan Version:** number, created at, source (*Starting plan* / *Plan Change #n* / *Your edit* / *Revert of #n*), changed fields from → to. The current nutrition targets (Goal, rate preset, kcal target, protein floor) and Training Program are the latest version's state.
 - **Plan Change:** number, kind (kcal / protein / Frequency Change / Deload), direction, state, before and after values, Evidence Snapshot, created at and resolved at.
 - **Nutrition review:** date, raw and smoothed Expenditure Estimate or insufficiency with its shortfall, and whether the Under-Floor Signal was raised.
 - **Exercise** (built-in library): name, muscle group, equipment, bodyweight flag.
@@ -621,7 +636,7 @@ _Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRath
 Each item lists what is already fixed. Nothing here may be decided by guessing during implementation.
 
 **Left to a slice spec** (each decided by its slice before implementation):
-1. **Onboarding:** whether any ONB-1 input can be prefilled from Health safely, and how few screens it takes. The inputs themselves are fixed (Onboarding slice).
+1. ~~Onboarding~~ decided: weight-only Health prefill (ONB-1), with three screens: **About you** (sex, age, height, weight, activity), **Goal** (Goal, preset, weekly target), and **Your starting plan** (estimate, protein floor, clamp notice, program preview, **Start**). Primary actions are pinned at the bottom and reachable without scrolling at 200% Dynamic Type. Back keeps values (Onboarding slice, issue #22).
 2. ~~Visual language~~ decided: option (a), the prototype's dark-only semantic tokens (`docs/ARCHITECTURE.md` §3; Bootstrap slice, issue #19).
 3. ~~Native accessibility criteria~~ decided: the §4 checklist is inherited by every slice (Bootstrap slice, issue #19).
 4. ~~Coach initiative~~ decided: no coach-initiated conversation and no Insight cards (COACH-7, TODAY-2).
@@ -632,6 +647,8 @@ Each item lists what is already fixed. Nothing here may be decided by guessing d
 
 **Outside this contract:**
 9. **Name:** "Motive" is a placeholder, and naming happens elsewhere.
+
+_Decided in: [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
 
 ## 12. References (Apple platform documentation)
 
@@ -648,7 +665,7 @@ How the prototype PRD's IDs map to this contract. "Dropped" names the decision t
 |---|---|---|
 | FR-1 | ONB-1 | Inputs are now sex, age, height, weight, activity level, Goal and rate, weekly session target. Dietary preference and units dropped (metric only). |
 | FR-2 | ONB-2, NUT-6–NUT-7 | Starting target is one number, not a range; it adapts weekly. |
-| FR-3 | NUT-2 | Carb and fat targets dropped; fat minimum checked only. |
+| FR-3 | NUT-2 | Carb and fat targets dropped; fat minimum computed and shown, not enforced. |
 | FR-4 | TODAY-1–TODAY-3 | Readiness signal dropped (Training adaptation and readiness rules). |
 | FR-5 | TODAY-4 | |
 | FR-6 | TODAY-5 | |
