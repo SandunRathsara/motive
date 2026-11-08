@@ -7,6 +7,6 @@ and `PRAGMA user_version` as `schema-v<N>.sql`. Never change an existing fixture
 schema to a fresh install. v0 is the empty pre-install record; v1 is captured
 from migration 1. `recorded_at` stores UTC Unix epoch milliseconds.
 
-Migration 2 adds the health cache, availability and anchors. It is tested from
-every existing fixture; capture `schema-v2.sql` only at its first tagged build,
-not by copying the migration during implementation.
+Migration 2 adds the health cache, availability and anchors. `schema-v2.sql` was
+captured from a fresh database at its first tagged build,
+`build/verification/1.0.0+10` (persistence code identical to that tag).
