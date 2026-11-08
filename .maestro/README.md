@@ -1,5 +1,9 @@
 # iOS simulator smoke verification
 
+## Re-run — 8 November 2026
+
+After the tab-bar Dynamic Type fix (`fcccc01`): Release simulator build of owner `1.0.0+8` on the same iPhone 17e (iOS 27.2), content size `large`. `npm run verify` passed all five gates; `smoke` passed in 24 s. Built with `-derivedDataPath /tmp/motive-sim-dd`, so the app is at `/tmp/motive-sim-dd/Build/Products/Release-iphonesimulator/Motive.app`.
+
 ## Result — 3 November 2026
 
 **Release simulator build and all five `npm run verify` gates passed.** Xcode 27.2 (27B52), iOS 27.2, iPhone 17e `3F737D26-4544-4954-9165-EB1DFEA8A8AA`, 390×844 pt (1170×2532 at 3×). Owner bundle `dev.motive.app`, build `1.0.0+1`, standalone embedded JS; Metro is not needed. This is **simulator evidence, not the issue #19 real-iPhone checklist**. No build tag was created or pushed.
