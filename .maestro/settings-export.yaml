@@ -9,11 +9,16 @@ appId: dev.motive.app
 - tapOn: "Export data"
 - assertVisible: "This file is not encrypted and contains your health record. Anyone who can open it can read it."
 - tapOn: "Continue to share sheet"
-# English iOS UIActivityViewController: the standard file actions include Copy,
-# and its top-right dismiss control is labelled Close. No third-party share target is needed.
-# Older iOS versions/locales may label the dismiss control Cancel; update this selector there.
-- assertVisible: "Copy"
-- tapOn: "Close"
+# iOS 27.2 simulator UIActivityViewController (English): the sheet shows the neutral dated file
+# name and offers Save to Files; it has no Close button and is dismissed through its
+# full-screen PopoverDismissRegion ("dismiss popup"). Its centre is covered by the sheet, so tap
+# the uncovered top of the region. Other iOS versions may need a different dismiss selector.
+- assertVisible: "motive-export-.*"
+- assertVisible: "Save to Files"
+- assertVisible:
+    id: "PopoverDismissRegion"
+- tapOn:
+    point: "50%,8%"
 - assertVisible: "Export finished."
 - tapOn: "Done"
 - assertVisible:

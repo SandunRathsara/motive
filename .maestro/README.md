@@ -1,5 +1,14 @@
 # iOS simulator smoke verification
 
+## Slice 2 data control — 8 November 2026
+
+Release-configuration simulator build of the slice 2 tree (identity still `1.0.0+8`; not a release, untagged) on the same iPhone 17e (iOS 27.2), content size `large`, built with `-derivedDataPath /tmp/motive-sim-dd`. `maestro test .maestro`: `settings-export`, `settings-delete` and `smoke` passed (3/3, 47 s).
+
+- `settings-export`: Today avatar → Settings → Export data → plaintext warning → share sheet showing `motive-export-2026-11-08` (JSON, 491 bytes) → dismissed → "Export finished." → Settings. The iOS 27.2 sheet has no Close button; the flow taps the uncovered top of its `PopoverDismissRegion`. `export-staging/` was empty afterwards; it held the file only while the sheet was open.
+- `settings-delete`: two-step sheet (disclosures, then "Delete everything") → Today placeholder with the Today tab selected, no Recovery, no Settings.
+- Ad-hoc (outside `.maestro/`, the delete flow without `clearState`): a seeded `gate_metric` row was gone after delete-all, the record reopened at `user_version=1`, and Application Support held only `Motive` (no `Motive.erase-intent` or `Motive.erasing`).
+- Not covered here: verification-variant interruption (force-quit mid-export or after database deletion), Recovery's erase on a corrupt record, Dynamic Type 200%, VoiceOver and the real-device checklist.
+
 ## Re-run — 8 November 2026
 
 After the tab-bar Dynamic Type fix (`fcccc01`): Release simulator build of owner `1.0.0+8` on the same iPhone 17e (iOS 27.2), content size `large`. `npm run verify` passed all five gates; `smoke` passed in 24 s. Built with `-derivedDataPath /tmp/motive-sim-dd`, so the app is at `/tmp/motive-sim-dd/Build/Products/Release-iphonesimulator/Motive.app`.
