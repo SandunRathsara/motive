@@ -14,7 +14,11 @@ test('names all four tabs, exposes selection, and switches on press', async () =
 
   await render(<ShellTabBar {...props} />);
   for (const name of names) {
-    expect(screen.getByRole('tab', { name, selected: name === 'Today' })).toBeOnTheScreen();
+    const tab = screen.getByRole('tab', { name, selected: name === 'Today' });
+    expect(tab).toBeOnTheScreen();
+    // Capped label scaling is backed by the iOS Large Content Viewer.
+    expect(tab).toHaveProp('accessibilityShowsLargeContentViewer', true);
+    expect(tab).toHaveProp('accessibilityLargeContentTitle', name);
   }
   await fireEvent.press(screen.getByRole('tab', { name: 'Fuel' }));
   expect(navigateToTab).toHaveBeenCalledWith('Fuel');
