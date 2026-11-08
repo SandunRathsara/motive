@@ -529,7 +529,7 @@ The entities below are indicative. Exact schemas are defined by each slice spec 
 - **Authorization:** granted per type and direction and revocable at any time. A denied read can't be told apart from no data, so absence is never reported as denial or treated as zero (SIG-3).
 - **Watch workouts** carry duration and heart rate with little per-set strength detail. They supplement manual set logging and never replace it (SIG-9).
 - **Freshness:** sleep and HRV often arrive after waking, so today's values show "not yet available" without an error state.
-- **Provisioning:** Phase 1 uses the paid Apple Developer Program. A free local Xcode install expires after 7 days, mid-dogfood, and free accounts limit the app IDs the verification variant needs.
+- **Provisioning:** Until v1, use local Xcode builds signed by the owner's free Personal Team and installed over USB, never under the employer team. Follow BUILD-1 and its free-provisioning amendment (`docs/TECH_STACK.md` §6) for renewal and the later EAS/personal paid-account switch. HealthKit on the free team still needs real-device verification (HK-2).
 
 _Decided in: [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2); [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6)._
 

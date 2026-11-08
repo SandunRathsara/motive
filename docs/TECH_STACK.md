@@ -41,7 +41,7 @@
 - Use an Expo development build or EAS build for custom native modules, HealthKit entitlements, and config plugins. Expo Go is not the target for those capabilities.
 - Keep the React Native New Architecture and other current Expo defaults unless a documented compatibility decision requires a change.
 - Centralize cross-feature native/infrastructure setup under `/lib`; place HealthKit-specific adapters in the health feature's service layer.
-- A config plugin or native package must be checked against the installed Expo SDK, React Native version, New Architecture, iOS target, and EAS build before adoption.
+- A config plugin or native package must be checked against the installed Expo SDK, React Native version, New Architecture, iOS target, and current BUILD-1 native build workflow before adoption.
 
 ### HealthKit and Apple Watch gate
 
