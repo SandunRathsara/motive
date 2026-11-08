@@ -1,0 +1,60 @@
+appId: dev.motive.app
+---
+# Typed Profile only: never request Health access or create a weigh-in.
+# Male, 35 years, 180 cm, 80 kg, activity 1.5: BMR/floor 1,755 kcal.
+- assertVisible: "About you"
+- tapOn: "Male"
+# Pick activity before opening the numeric keyboard: iOS may expose obscured radios.
+- scrollUntilVisible:
+    element:
+      text: "On my feet part of the day"
+    direction: DOWN
+- tapOn: "On my feet part of the day"
+- scrollUntilVisible:
+    element:
+      text: 'Age \(years\)'
+      index: 1
+    direction: UP
+# iOS exposes the visible label and the labelled TextInput; use the input (second match).
+- tapOn:
+    text: 'Age \(years\)'
+    index: 1
+- inputText: "35"
+- scrollUntilVisible:
+    element:
+      text: 'Height \(cm\)'
+      index: 1
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    text: 'Height \(cm\)'
+    index: 1
+- inputText: "180"
+- scrollUntilVisible:
+    element:
+      text: 'Weight \(kg\)'
+      index: 1
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    text: 'Weight \(kg\)'
+    index: 1
+- inputText: "80"
+- tapOn: "Continue"
+- assertVisible: "Goal"
+- tapOn: "Fat Loss"
+- scrollUntilVisible:
+    element:
+      text: "More sessions"
+    direction: DOWN
+- tapOn: "More sessions"
+- tapOn: "Continue"
+- assertVisible: "Your starting plan"
+- assertVisible: "starting estimate"
+- assertVisible: "Full Body"
+- tapOn: "Start"
+- assertVisible:
+    text: "Today"
+    selected: true
+- assertVisible: "Plan v1"
+- assertNotVisible: "MOTIVE · RECOVERY"

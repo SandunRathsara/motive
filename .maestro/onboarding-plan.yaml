@@ -1,0 +1,16 @@
+appId: dev.motive.app
+---
+- launchApp:
+    clearState: true
+- runFlow: subflows/onboard.yaml
+- assertVisible: "Your targets"
+- assertVisible: ".*starting estimate.*"
+- assertVisible: "Plan v1"
+# The committed setup survives relaunch; onboarding must not reappear.
+- launchApp
+- assertVisible:
+    text: "Today"
+    selected: true
+- assertVisible: ".*starting estimate.*"
+- assertVisible: "Plan v1"
+- assertNotVisible: "About you"

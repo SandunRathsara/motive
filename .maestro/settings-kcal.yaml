@@ -1,0 +1,38 @@
+appId: dev.motive.app
+---
+- launchApp:
+    clearState: true
+- runFlow: subflows/onboard.yaml
+- tapOn: "Settings"
+- assertVisible: "Goal & rate preset"
+- tapOn: "kcal target"
+- assertVisible: "kcal per day · positive whole number"
+- tapOn:
+    text: "kcal target"
+    index: 1
+- eraseText
+- inputText: "1200"
+- tapOn: "Save"
+- assertVisible: 'Your floor is 1,755 kcal, based on BMR at your reference weight\. Enter at least this amount\. Nothing was saved\.'
+- assertNotVisible: 'Saved\.'
+- assertVisible:
+    text: "Save"
+    enabled: true
+- tapOn:
+    text: "kcal target"
+    index: 1
+- eraseText
+- inputText: "2400"
+- tapOn: "Save"
+- assertVisible: 'Saved\.'
+- tapOn: "Done"
+- assertVisible: "Goal & rate preset"
+# The root native stack's back control uses the route-group label on iOS 27.2.
+- tapOn: '\(tabs\)'
+- assertVisible:
+    text: "Today"
+    selected: true
+- assertVisible: "Plan v2 · changed today"
+- assertVisible: "2,400 kcal"
+- assertNotVisible: ".*starting estimate.*"
+- assertNotVisible: "MOTIVE · RECOVERY"

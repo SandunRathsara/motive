@@ -2,10 +2,15 @@ appId: dev.motive.app
 ---
 - launchApp:
     clearState: true
+- runFlow: subflows/onboard.yaml
 - assertVisible:
     text: "Today"
     selected: true
 - tapOn: "Settings"
+- scrollUntilVisible:
+    element:
+      text: "Export data"
+    direction: DOWN
 - tapOn: "Export data"
 - assertVisible: "This file is not encrypted and contains your health record. Anyone who can open it can read it."
 - tapOn: "Continue to share sheet"

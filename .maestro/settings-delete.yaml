@@ -2,10 +2,15 @@ appId: dev.motive.app
 ---
 - launchApp:
     clearState: true
+- runFlow: subflows/onboard.yaml
 - assertVisible:
     text: "Today"
     selected: true
 - tapOn: "Settings"
+- scrollUntilVisible:
+    element:
+      text: "Delete all data"
+    direction: DOWN
 - tapOn: "Delete all data"
 - assertVisible: "Before you delete"
 - assertVisible: 'This removes all Motive data on this device\. Apple Health data and already-shared exports are not erased\..*'
@@ -17,11 +22,14 @@ appId: dev.motive.app
 - tapOn: "Continue"
 - assertVisible: "This cannot be undone. Motive will return to a fresh start."
 - tapOn: "Delete everything"
-- assertVisible: "Your daily overview is coming next. There’s nothing you need to do here yet."
-- assertVisible: "Not built yet"
-- assertVisible:
-    text: "Today"
-    selected: true
+- assertVisible: "About you"
+- assertNotVisible: "Plan v1"
+- assertNotVisible: "Your targets"
 - assertNotVisible: "MOTIVE · RECOVERY"
 - assertNotVisible: "Deletion not finished"
 - assertNotVisible: "Export data"
+# Reseeded app content must allow a new Profile and restart the version sequence.
+- runFlow: subflows/onboard.yaml
+- assertVisible: ".*starting estimate.*"
+- assertVisible: "Plan v1"
+- assertNotVisible: "Plan v2 · changed today"

@@ -2,12 +2,17 @@ appId: dev.motive.app
 ---
 - launchApp:
     clearState: true
+- runFlow: subflows/onboard.yaml
 # Six navigation/confirmation actions; assert the destination after each one.
 - assertVisible:
     text: "Today"
     selected: true
 - assertNotVisible: "MOTIVE · RECOVERY"
 - tapOn: "Settings"
+- scrollUntilVisible:
+    element:
+      text: "Phase 1 report"
+    direction: DOWN
 - assertVisible: "Phase 1 report"
 - assertVisible: "Health Signals"
 - tapOn: "Health Signals"

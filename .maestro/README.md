@@ -1,5 +1,19 @@
 # iOS simulator smoke verification
 
+## Slice 4 onboarding and Plan v1 — 8 November 2026
+
+Release-configuration arm64 simulator build of owner **1.0.0+12** (`dev.motive.app`, untagged) passed on iPhone 17e / iOS 27.2, content size `large`. The incomplete generated project had no workspace; a clean owner prebuild restored it and installed Pods. Both `APP_VARIANT` and `EXPO_PUBLIC_APP_VARIANT` were explicitly `owner` for prebuild, Xcode and verification. The README's arm64-only Xcode command and `/tmp/motive-sim-dd` succeeded; tracked package/config diffs remained empty. No app implementation fix was needed.
+
+- **Final `npm run verify`: all five gates passed** — typecheck, lint, Jest (**78 suites / 686 tests**), architecture and Maestro (**6/6**, **4m 22s**). Per-flow: `settings-kcal` 49s, `onboarding-plan` 31s, `settings-export` 32s, `settings-delete` 51s, `health-signals` 1m 5s, `smoke` 35s. Jest emitted the existing Watchman recrawl warning but passed.
+- Every top-level flow starts with `clearState: true`, then runs `subflows/onboard.yaml`: typed age/height/weight, picked sex/activity, Fat Loss with its default rate, a weekly session target and Start. It never taps **Use Apple Health**. Nested subflows are not independently discovered by `maestro test .maestro`.
+- `onboarding-plan`: starting plan preview → Today with **starting estimate** and **Plan v1**; relaunch retains the committed plan without onboarding.
+- `settings-kcal`: Settings → kcal target; 1,200 kcal is refused with the **1,755 kcal** floor, **BMR at your reference weight** reason and **Nothing was saved**; a corrected 2,400 kcal save → Today with **Plan v2 · changed today**, the new target and no starting-estimate label. Reaching v2 also checks that the refusal appended no version.
+- `settings-delete`: retains both confirmation steps and out-of-scope-data disclosures, now expects onboarding instead of the removed Today placeholder, then completes onboarding again at **Plan v1**. Recovery, incomplete deletion and stale Settings are rejected.
+- `smoke`, `settings-export` and `health-signals` retain their navigation/export/signal checks after setup. Smoke now checks the real Today targets instead of obsolete placeholder copy; the other three tabs remain placeholders. Settings flows scroll to the original controls below the new Plan rows.
+- iOS harness details: choose activity before opening the numeric keyboard (obscured radios can remain in the hierarchy, and `hideKeyboard` failed); target the second label match for labelled inputs. Today's kcal accessibility value includes **starting estimate**, so assertions match the combined value. Settings' native back button is currently labelled **(tabs)**, not Today.
+- Maestro was absent from PATH and the old `/tmp/motive-sim-evidence` copy was gone. Downloaded the official **2.12.0** release ZIP, verified its published SHA-256, and extracted it only under `$TMPDIR/opencode/slice4-maestro/`; passing commands prepended `$TMPDIR/opencode/slice4-maestro/maestro/bin` to PATH. No global tooling or repo dependency changed. Logs: `$TMPDIR/opencode/slice4-prebuild.log`, `slice4-build.log`, `slice4-e2e-first.log`, `slice4-kcal-final.log` and `slice4-verify.log`; full-suite Maestro artifacts are under `~/.maestro/tests/`.
+- Device-only / not covered by these flows: Health prefill and its permission sheet/provenance/slow-or-empty fallback, VoiceOver focus and announcements, the slice-4 AX3 checklist, airplane-mode tagged-device onboarding, and kill-mid-flow/before-versus-after-Start behavior. Relaunch after a completed setup is not kill-mid-flow evidence. No device installation, release or build tag is part of this simulator run.
+
 ## Slice 3 Health Signals — 8 November 2026
 
 Release-configuration arm64 simulator build of owner `1.0.0+9` (uncommitted, untagged), including `modules/motive-healthkit`, passed on the same iPhone 17e (iOS 27.2), content size `large`. Clean owner prebuild and `xcodebuild -derivedDataPath /tmp/motive-sim-dd` succeeded; `git diff -- package.json` remained empty. Generated HealthKit configuration has the read-purpose string and entitlement, without a write-purpose string or background delivery.
@@ -74,7 +88,7 @@ npm run verify
 
 Release embeds the bundle through Xcode's bundle phase. If Maestro reports a missing `testmanagerd` unix socket after a host sleep, shutdown/boot the simulator and wait for `bootstatus -b`; increasing driver timeout alone did not repair the stale socket.
 
-`smoke.yaml` launches with `clearState`, taps Today → Train → Fuel → Coach → Today by accessible label, verifies each placeholder, checks selected tab state, and rejects Recovery. The initial Today selector uses selected state because the native hierarchy contains duplicate header nodes; an index selector can tap the header instead of the tab.
+`smoke.yaml` launches with `clearState`, completes typed onboarding, taps Today → Train → Fuel → Coach → Today by accessible label, verifies Today targets and the other tabs' placeholders, checks selected tab state, and rejects Recovery. The initial Today selector uses selected state because the native hierarchy contains duplicate header nodes; an index selector can tap the header instead of the tab.
 
 ## Simulator recovery evidence
 
