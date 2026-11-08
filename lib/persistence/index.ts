@@ -1,4 +1,4 @@
-export { openRecord, eraseRecord, restoreSnapshot, requireRecord, RecordNotReadyError, rawDatabaseUri, launchSentinel, createLaunchSentinel } from './record';
+export { openRecord, eraseRecord, restoreSnapshot, requireRecord, RecordNotReadyError, rawDatabaseUri, recordStorage, launchSentinel, createLaunchSentinel } from './record';
 export type { RecordAdapters, RecordStorage, RecordHandle, OpenRecordResult, EraseRecordResult, RestoreSnapshotResult } from './record';
 export type { RecordFailure } from './runner';
 export { migrations } from './migrations';

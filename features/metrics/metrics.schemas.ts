@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 const timedType = z.enum(['food_active_input', 'recognition_wait', 'set_logging']);
+/** Current Gate Metrics vocabulary, in display order. Later slices append event types. */
+export const metricEventTypes = [...timedType.options, 'unclean_exit'] as const;
+export type MetricEventType = typeof metricEventTypes[number];
 const duration = z.number().int().nonnegative();
 export const metricEventSchema = z.discriminatedUnion('event_type', [
   z.object({ event_type: z.literal('unclean_exit') }).strict(),

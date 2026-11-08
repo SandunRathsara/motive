@@ -70,6 +70,10 @@ export function requireRecord(): RecordHandle {
   if (!readyRecord) throw new RecordNotReadyError();
   return readyRecord;
 }
+/** App-controlled record directory storage, for lifecycle features (export staging, erase marker). */
+export async function recordStorage(adapters?: RecordAdapters): Promise<RecordStorage> {
+  return (await adaptersOrDefault(adapters)).storage;
+}
 export async function rawDatabaseUri(adapters?: RecordAdapters): Promise<string> {
   return `${(await adaptersOrDefault(adapters)).storage.root}/${name}`;
 }

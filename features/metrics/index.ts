@@ -1,3 +1,4 @@
 export { metrics } from './services/metrics';
 export { useUncleanExitTracking } from './hooks/useUncleanExitTracking';
-export type { MetricEvent, MetricRow } from './metrics.schemas';
+export { metricEventTypes } from './metrics.schemas';
+export type { MetricEvent, MetricEventType, MetricRow } from './metrics.schemas';
