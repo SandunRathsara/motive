@@ -10,6 +10,7 @@ export async function recoverUncleanExit(sentinel: LaunchSentinel, record: (even
 }
 export async function trackAppState(state: string | null | undefined, sentinel: LaunchSentinel, build: string): Promise<void> {
   if (state === 'active') await sentinel.write(build);
-  // Do NOT clear on inactive: swipe-killing from the app switcher must count as unclean.
+  // Clear only on background. On a real iPhone, swipe-killing from the app switcher delivers
+  // `background` first, so it is a clean exit; only exits without it (crashes, watchdog kills) count.
   else if (state === 'background') await sentinel.clear();
 }

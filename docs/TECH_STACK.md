@@ -210,6 +210,10 @@ Open gates requiring a record before implementation:
 
 - **Newer-schema preservation:** device opens first inspect a disposable database/WAL copy in the backup-excluded Motive directory. Even reading `user_version` on the original through SQLite can delete sidecars on close. The probe includes uncheckpointed WAL writes, is removed after inspection, and refuses newer versions before opening the original. This adds local copy I/O to cold open; real-device UX-7 timing remains required.
 
+### Bootstrap device findings (8 November 2026)
+
+- **Unclean exits:** on a real iPhone, swipe-killing from the app switcher delivers `background` before termination, so it clears the launch sentinel and records nothing. This is intended: `unclean_exit` is crash evidence (REQUIREMENT §10b), and a user force-quit is not a crash. Verify recording by sending `SIGKILL` to the foreground process (`xcrun devicectl device process signal --signal SIGKILL`), then relaunching; one row with the killed build's ID is expected.
+
 ## 7. Quality gates
 
 `package.json` owns the executable commands. `verify` runs the following five gates in order and stops at the first failure; absence or non-execution of a gate is not a pass.
