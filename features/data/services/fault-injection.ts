@@ -1,4 +1,5 @@
 import { isVerification } from '@/lib/build';
+import { useFaultInjectionStore } from '@/store/fault-injection';
 
 /**
  * Slice-owned decision 7: a step-pause toggle compiled only into the verification variant
@@ -6,28 +7,16 @@ import { isVerification } from '@/lib/build';
  * A paused operation never resumes; the owner force-quits to exercise crash recovery (§10b).
  */
 export type FaultPoint = 'afterStaging' | 'afterDatabaseDeleted';
-export interface FaultInjectionState { available: boolean; armed: FaultPoint | null; paused: FaultPoint | null }
-
-let state: FaultInjectionState = { available: isVerification, armed: null, paused: null };
-const listeners = new Set<() => void>();
-const set = (next: Partial<FaultInjectionState>) => {
-  state = { ...state, ...next };
-  listeners.forEach((listener) => listener());
-};
 
 export const faultInjection = {
-  getState: (): FaultInjectionState => state,
-  subscribe(listener: () => void): () => void {
-    listeners.add(listener);
-    return () => { listeners.delete(listener); };
-  },
+  available: isVerification,
   arm(point: FaultPoint | null): void {
-    if (isVerification) set({ armed: point });
+    if (isVerification) useFaultInjectionStore.getState().arm(point);
   },
   /** Resolves immediately unless this verification build is armed at `point`; then never resolves. */
   pauseAt(point: FaultPoint): Promise<void> {
-    if (!isVerification || state.armed !== point) return Promise.resolve();
-    set({ paused: point });
+    if (!isVerification || useFaultInjectionStore.getState().armed !== point) return Promise.resolve();
+    useFaultInjectionStore.getState().pause(point);
     return new Promise<void>(() => {});
   },
 };

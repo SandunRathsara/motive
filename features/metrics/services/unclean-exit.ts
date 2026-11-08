@@ -18,7 +18,7 @@ export async function quiesceUncleanExitTracking(): Promise<void> {
   await queue;
 }
 export async function resetUncleanExitTracking(): Promise<void> { startup = undefined; queue = undefined; }
-export async function clearUncleanExitTracking(): Promise<boolean> { return startup === undefined && queue === undefined && subscriptions.size === 0; }
+export async function isUncleanExitTrackingClear(): Promise<boolean> { return startup === undefined && queue === undefined && subscriptions.size === 0; }
 
 export function subscribeUncleanExit(onError: () => void): () => void {
   if (!recordWritesAllowed()) return () => {};

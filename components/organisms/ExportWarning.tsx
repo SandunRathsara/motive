@@ -17,7 +17,7 @@ export function ExportWarning({ model, paused = false }: { model: DataExportView
       </Text>}
       {model.step === 'failed' && <>
         <Text accessibilityRole="alert" selectable className="text-lg text-danger">{model.reason}</Text>
-        <ActionButton label="Retry" onPress={model.retry} />
+        {model.code !== 'cleanupFailed' && <ActionButton label="Retry" onPress={model.retry} />}
         <ActionButton label="Dismiss" variant="secondary" onPress={model.dismiss} />
       </>}
       {model.step === 'done' && <>

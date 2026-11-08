@@ -1,14 +1,19 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
-import { eraseAll } from '../services/erase';
+import { useFaultInjectionStore } from '@/store/fault-injection';
+import { eraseAll, retryBlockedErase } from '../services/erase';
 import { faultInjection } from '../services/fault-injection';
 import { useEraseLifecycle } from './useEraseLifecycle';
 import { useFaultInjection } from './useFaultInjection';
 
 jest.mock('@/lib/build', () => ({ isVerification: true }));
-jest.mock('../services/erase', () => ({ eraseAll: jest.fn(async () => ({ ok: true })) }));
+jest.mock('../services/erase', () => ({ eraseAll: jest.fn(), retryBlockedErase: jest.fn(async () => ({ ok: true })) }));
 const initial = useRecordLifecycle.getState();
-beforeEach(() => { useRecordLifecycle.setState(initial, true); jest.clearAllMocks(); faultInjection.arm(null); });
+beforeEach(() => {
+  useRecordLifecycle.setState(initial, true);
+  useFaultInjectionStore.setState(useFaultInjectionStore.getInitialState(), true);
+  jest.clearAllMocks();
+});
 
 test('the root sees erasing, blocked and retry completion even without a Settings hook', async () => {
   const { result } = await renderHook(() => useEraseLifecycle());
@@ -19,13 +24,14 @@ test('the root sees erasing, blocked and retry completion even without a Setting
   expect(result.current.phase).toBe('erasing');
   await act(() => useRecordLifecycle.getState().blockErase());
   expect(result.current.phase).toBe('erase-blocked');
-  jest.mocked(eraseAll).mockImplementation(async () => {
+  jest.mocked(retryBlockedErase).mockImplementation(async () => {
     useRecordLifecycle.getState().beginErase();
     useRecordLifecycle.getState().completeErase();
     return { ok: true };
   });
   await act(() => result.current.retry());
-  expect(result.current.phase).toBe('ready'); expect(eraseAll).toHaveBeenCalledTimes(1);
+  expect(result.current.phase).toBe('ready'); expect(retryBlockedErase).toHaveBeenCalledTimes(1);
+  expect(eraseAll).not.toHaveBeenCalled();
 });
 
 test('verification pause is observable without waiting for the paused operation to finish', async () => {

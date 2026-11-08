@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { aiRetentionNotice } from '../retention';
+import { deleteAllDisclosure } from '../retention';
 import { eraseAll } from '../services/erase';
 
 export type DeleteAllStep = 'idle' | 'disclosures' | 'final' | 'erasing';
@@ -11,7 +11,7 @@ export function useDeleteAllData() {
   const move = (next: DeleteAllStep) => { current.current = next; setStep(next); };
   return {
     step,
-    disclosures: `This removes all Motive data on this device. Apple Health data and already-shared exports are not erased. ${aiRetentionNotice}`,
+    disclosures: deleteAllDisclosure,
     begin: () => { if (current.current === 'idle') move('disclosures'); },
     next: () => { if (current.current === 'disclosures') move('final'); },
     cancel: () => { if (current.current !== 'erasing') move('idle'); },

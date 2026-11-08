@@ -50,6 +50,12 @@ test('missing source roots and import-looking comments/strings are harmless', ()
   expect(run().status).toBe(0);
 });
 
+test('React Native Modal presentation enums are behavior, not inline visual styles', () => {
+  writeTree({ 'components/organisms/Confirmation.tsx': `import { Modal } from 'react-native';
+export const Confirmation = () => <Modal presentationStyle="pageSheet" />;` });
+  expect(run().status).toBe(0);
+});
+
 test('default root is cwd', () => {
   const result = spawnSync(process.execPath, [cli], { cwd: root, encoding: 'utf8' });
   expect(result.status).toBe(0);

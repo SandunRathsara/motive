@@ -22,6 +22,7 @@ const reasons: Record<ExportErrorCode, string> = {
   cancelled: 'The export was cancelled. Nothing was shared.',
   sharingUnavailable: 'Sharing isn’t available on this iPhone. Nothing was shared. Try again.',
   shareFailed: 'Couldn’t open or finish sharing the export. Nothing was shared. Try again.',
+  cleanupFailed: 'Motive couldn’t remove its temporary export copy. The file may already have been shared. It will try again the next time Motive opens.',
   busy: 'Another data operation is still running. Nothing was shared. Try again when it finishes.',
 };
 
@@ -64,7 +65,7 @@ export function useDataExport(): DataExportViewModel {
     },
     confirm: async () => { if (warned.current) await run(); },
     cancel: dismiss,
-    retry: async () => { if (state.step === 'failed') await run(); },
+    retry: async () => { if (state.step === 'failed' && state.code !== 'cleanupFailed') await run(); },
     dismiss,
   };
 }

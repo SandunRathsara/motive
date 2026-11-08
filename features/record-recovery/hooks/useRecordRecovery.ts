@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { RecordFailure } from '@/lib/persistence';
-import { aiRetentionNotice } from '@/features/data';
+import { deleteAllDisclosure } from '@/features/data';
 import type { RecoveryOutcome } from '../services/recovery';
 import type { RecordGate } from './useRecordGate';
 
@@ -46,7 +46,7 @@ export function useRecordRecovery(gate: RecordGate) {
     step, confirmation, busy, error, canErase, erasePhrase,
     warning: step === 'restore' ? 'Restoring the snapshot discards anything written after the snapshot. This cannot be undone.' :
       step === 'share' ? 'This file is not encrypted and contains your health data. Only share it with someone you trust.' :
-      step === 'erase' ? `This removes all Motive data on this device. Apple Health data and already-shared exports are not erased. ${aiRetentionNotice}` : null,
+      step === 'erase' ? deleteAllDisclosure : null,
     setConfirmation,
     retry: () => run(gate.retry),
     chooseRestore: () => { if (gate.status === 'recovery' && gate.snapshotExists) choose('restore'); },

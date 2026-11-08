@@ -9,7 +9,7 @@ import { exportSections } from '../registry/export-sections';
 import { faultInjection } from './fault-injection';
 import { nativeShare, type ShareAdapter } from './share';
 
-export type ExportErrorCode = 'storageFull' | 'writeFailed' | 'validationFailed' | 'cancelled' | 'sharingUnavailable' | 'shareFailed' | 'busy';
+export type ExportErrorCode = 'storageFull' | 'writeFailed' | 'validationFailed' | 'cancelled' | 'sharingUnavailable' | 'shareFailed' | 'cleanupFailed' | 'busy';
 export type ExportResult =
   | { ok: true; skippedCount: number; skippedRowCounts: Record<string, number> }
   | { ok: false; code: ExportErrorCode };
@@ -26,10 +26,8 @@ export interface ExportDependencies {
 }
 
 async function removeStaging(storage: RecordStorage, path: string): Promise<void> {
-  try {
-    await storage.remove(path);
-    if (await storage.exists(path)) throw new Error('stagingRemaining');
-  } catch { logEvent('export_failed', { errorCode: 'stagingSweepFailed' }); }
+  await storage.remove(path);
+  if (await storage.exists(path)) throw new Error('stagingRemaining');
 }
 
 export function createExportService(deps: ExportDependencies) {
@@ -40,6 +38,7 @@ export function createExportService(deps: ExportDependencies) {
       if (!lifecycle.beginExport()) return { ok: false, code: 'busy' };
       let storage: RecordStorage | undefined;
       let staged: string | undefined;
+      let outcome: ExportResult;
       let failure: Exclude<ExportErrorCode, 'busy'> = 'validationFailed';
       const checkCancelled = () => {
         if (signal?.aborted) { failure = 'cancelled'; throw new Error('cancelled'); }
@@ -74,26 +73,33 @@ export function createExportService(deps: ExportDependencies) {
         const result = await deps.share.share({ uri: staged, mimeType: 'application/json', uti: 'public.json', dialogTitle: 'Export Motive data' });
         if (!result.ok) {
           logEvent('export_failed', { errorCode: result.code });
-          return result;
+          outcome = result;
+        } else {
+          const skippedCount = Object.values(envelope.skippedRowCounts).reduce((total, count) => total + count, 0);
+          outcome = { ok: true, skippedCount, skippedRowCounts: envelope.skippedRowCounts };
         }
-        const skippedCount = Object.values(envelope.skippedRowCounts).reduce((total, count) => total + count, 0);
-        logEvent('export_finished', { count: skippedCount });
-        return { ok: true, skippedCount, skippedRowCounts: envelope.skippedRowCounts };
       } catch (error) {
         if (failure === 'writeFailed' && error instanceof Error && /no space|ENOSPC|disk full/i.test(error.message)) failure = 'storageFull';
         logEvent('export_failed', { errorCode: failure });
-        return { ok: false, code: failure };
-      } finally {
-        try { if (storage && staged) await removeStaging(storage, staged); }
-        finally { lifecycle.endExport(); }
+        outcome = { ok: false, code: failure };
       }
+      try { if (storage && staged) await removeStaging(storage, staged); }
+      catch {
+        logEvent('export_failed', { errorCode: 'cleanupFailed' });
+        outcome = { ok: false, code: 'cleanupFailed' };
+      } finally { lifecycle.endExport(); }
+      if (outcome.ok) logEvent('export_finished', { count: outcome.skippedCount });
+      return outcome;
     },
     /** Launch-only: openRecord.prepare recreates this backup-excluded directory. */
     async sweepStaging(): Promise<void> {
-      try {
-        const storage = await deps.storage();
-        await removeStaging(storage, `${storage.root}/export-staging`);
-      } catch { logEvent('export_failed', { errorCode: 'stagingSweepFailed' }); }
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const storage = await deps.storage();
+          await removeStaging(storage, `${storage.root}/export-staging`);
+          return;
+        } catch { if (attempt === 1) logEvent('export_failed', { errorCode: 'stagingSweepFailed' }); }
+      }
     },
   };
 }

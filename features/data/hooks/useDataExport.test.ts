@@ -112,3 +112,18 @@ test('unexpected service errors expose no private details and can be retried', a
   await act(() => result.current.retry());
   expect(result.current.step).toBe('done');
 });
+
+test('cleanup failure warns that sharing may have happened and Retry cannot share another copy', async () => {
+  service.export.mockResolvedValueOnce({ ok: false, code: 'cleanupFailed' });
+  const { result } = await setup();
+  await act(() => result.current.begin());
+  await act(() => result.current.confirm());
+  expect(result.current).toMatchObject({
+    step: 'failed', code: 'cleanupFailed',
+    reason: 'Motive couldn’t remove its temporary export copy. The file may already have been shared. It will try again the next time Motive opens.',
+  });
+  await act(() => result.current.retry());
+  expect(service.export).toHaveBeenCalledTimes(1);
+  await act(() => result.current.dismiss());
+  expect(result.current.step).toBe('idle');
+});

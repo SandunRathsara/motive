@@ -12,7 +12,7 @@ export type { EraseLifecycleViewModel } from './hooks/useEraseLifecycle';
 export { useFaultInjection } from './hooks/useFaultInjection';
 export { eraseAll, resumePendingErase, eraseService, createEraseService } from './services/erase';
 export type { EraseOutcome, EraseDependencies, EraseKeyValueAdapter, EraseStep } from './services/erase';
-export { aiRetentionNotice } from './retention';
+export { aiRetentionNotice, deleteAllDisclosure } from './retention';
 export { useDataExport } from './hooks/useDataExport';
 export type { DataExportState, DataExportViewModel } from './hooks/useDataExport';
 export type { ExportErrorCode } from './services/export';

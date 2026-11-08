@@ -9,7 +9,9 @@ jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: nu
 
 const load = (variant: 'owner' | 'verification') => {
   process.env.EXPO_PUBLIC_APP_VARIANT = variant;
-  return jest.requireActual<typeof import('./fault-injection')>('./fault-injection').faultInjection;
+  const faults = jest.requireActual<typeof import('./fault-injection')>('./fault-injection').faultInjection;
+  const store = jest.requireActual<typeof import('@/store/fault-injection')>('@/store/fault-injection').useFaultInjectionStore;
+  return { faults, store };
 };
 const settled = async (promise: Promise<void>) => {
   let done = false;
@@ -19,19 +21,22 @@ const settled = async (promise: Promise<void>) => {
 };
 
 test('owner builds never arm or pause', async () => {
-  const faults = load('owner');
+  const { faults, store } = load('owner');
   faults.arm('afterStaging');
-  expect(faults.getState()).toEqual({ available: false, armed: null, paused: null });
+  expect(faults.available).toBe(false);
+  expect(store.getState()).toMatchObject({ armed: null, paused: null });
+  // Even stale or directly manipulated client state cannot bypass the build gate.
+  store.getState().arm('afterStaging');
   expect(await settled(faults.pauseAt('afterStaging'))).toBe(true);
+  expect(store.getState().paused).toBeNull();
 });
 
 test('verification builds halt only at the armed step and report it', async () => {
-  const faults = load('verification');
-  const listener = jest.fn();
-  faults.subscribe(listener);
+  const { faults, store } = load('verification');
+  expect(faults.available).toBe(true);
+  expect(await settled(faults.pauseAt('afterStaging'))).toBe(true);
   faults.arm('afterDatabaseDeleted');
   expect(await settled(faults.pauseAt('afterStaging'))).toBe(true);
   expect(await settled(faults.pauseAt('afterDatabaseDeleted'))).toBe(false);
-  expect(faults.getState()).toEqual({ available: true, armed: 'afterDatabaseDeleted', paused: 'afterDatabaseDeleted' });
-  expect(listener).toHaveBeenCalledTimes(2);
+  expect(store.getState()).toMatchObject({ armed: 'afterDatabaseDeleted', paused: 'afterDatabaseDeleted' });
 });

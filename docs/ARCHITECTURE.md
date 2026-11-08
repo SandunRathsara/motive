@@ -75,6 +75,7 @@ Atoms and generic molecules accept primitive or generic presentation props. Feat
 - Use PascalCase filenames and component names; one primary component per file.
 - Use NativeWind classes with semantic design tokens. Keep repeated class composition in the component, not in a new styling framework.
 - Inline styles require an explicitly approved, documented exception. Navigator chrome uses `lib/theme/navigation.ts`, derived from tokens and applied through the root `ThemeProvider`, not JSX style props or style-suffixed navigator options.
+  React Native `Modal.presentationStyle` is a native presentation enum, not a visual style prop; sheet content still uses NativeWind.
 - Use accessible roles, labels, focus behavior, and minimum touch targets as part of the component contract.
 - Render loading, empty, error, and unavailable-data states deliberately. Missing health data is unknown, not zero.
 - Do not create an atom for every trivial wrapper. Extract a component when reuse, complexity, or testing justifies it.

@@ -28,7 +28,21 @@ test('disclosures come before the final destructive action, with no typing', asy
   expect(final.cancel).toHaveBeenCalledTimes(1);
 });
 
+test.each(['disclosures', 'final'] as const)('%s is a scrollable page sheet and system dismissal cancels without deleting', async (step) => {
+  const props = model(step);
+  await render(<DeleteConfirmation model={props} />);
+  const sheet = screen.getByTestId('delete-confirmation-sheet');
+  expect(sheet).toHaveProp('visible', true);
+  expect(sheet).toHaveProp('presentationStyle', 'pageSheet');
+  expect(sheet).toHaveProp('animationType', 'slide');
+  expect(screen.getByTestId('delete-confirmation-content')).toHaveProp('contentInsetAdjustmentBehavior', 'automatic');
+  await fireEvent(sheet, 'requestClose');
+  expect(props.cancel).toHaveBeenCalledTimes(1);
+  expect(props.confirm).not.toHaveBeenCalled();
+});
+
 test.each(['idle', 'erasing'] as const)('%s leaves confirmation controls hidden', async (step) => {
   await render(<DeleteConfirmation model={model(step)} />);
   expect(screen.queryByRole('button')).toBeNull();
+  expect(screen.queryByTestId('delete-confirmation-sheet')).toBeNull();
 });

@@ -49,6 +49,7 @@ export function checkArchitecture(root = process.cwd()) {
     const zustandFactories = new Set();
     const zustandNamespaces = new Set();
     const styleSheets = new Set(['StyleSheet']);
+    const nativeModals = new Set();
     const reactNativeNamespaces = new Set();
 
     function checkImport(node, specifier, typeOnly = false, names = []) {
@@ -117,6 +118,7 @@ export function checkArchitecture(root = process.cwd()) {
         }
         if (specifier === 'react-native') {
           for (const element of elements) if ((element.propertyName ?? element.name).text === 'StyleSheet') styleSheets.add(element.name.text);
+          for (const element of elements) if ((element.propertyName ?? element.name).text === 'Modal') nativeModals.add(element.name.text);
           if (bindings && ts.isNamespaceImport(bindings)) reactNativeNamespaces.add(bindings.name.text);
         }
       } else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
@@ -131,7 +133,14 @@ export function checkArchitecture(root = process.cwd()) {
       if (layer === 'features' && !/\.[jt]sx$/.test(file) && (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node))) add(node, 'feature-jsx', 'Features must not contain JSX.', 4);
       // docs/ARCHITECTURE.md §3: NativeWind replaces style props; navigator chrome uses the token theme.
       if (['app', 'components', 'features'].includes(layer)) {
-        if (ts.isJsxAttribute(node) && /^(?:style|.*Style)$/.test(node.name.getText(source))) add(node, 'inline-style', 'Use NativeWind classes or the navigation theme, not JSX style attributes.', 3);
+        if (ts.isJsxAttribute(node)) {
+          const name = node.name.getText(source);
+          const tag = node.parent.parent.tagName;
+          // Modal's presentationStyle selects native sheet behavior, not visual styling (§3).
+          const modalPresentation = name === 'presentationStyle' && ((ts.isIdentifier(tag) && nativeModals.has(tag.text)) ||
+            (ts.isPropertyAccessExpression(tag) && tag.name.text === 'Modal' && reactNativeNamespaces.has(tag.expression.getText(source))));
+          if (/^(?:style|.*Style)$/.test(name) && !modalPresentation) add(node, 'inline-style', 'Use NativeWind classes or the navigation theme, not JSX style attributes.', 3);
+        }
         if (['app', 'components'].includes(layer) && (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) && ts.isObjectLiteralExpression(node.parent)) {
           const name = ts.isComputedPropertyName(node.name) ? node.name.expression : node.name;
           if ((ts.isIdentifier(name) || ts.isStringLiteral(name)) && /Style$/.test(name.text)) add(node, 'inline-style', 'Use the navigation theme, not style options.', 3);

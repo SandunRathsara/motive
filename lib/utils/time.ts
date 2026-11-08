@@ -14,7 +14,7 @@ export function toIsoWithOffset(epochMs: number, offsetAt: OffsetAt = deviceOffs
 }
 
 /** Local calendar day (`YYYY-MM-DD`) under the fixed 04:00 day boundary (§3, NUT-5). */
-export function dayKey(epochMs: number, offsetAt: OffsetAt = deviceOffset, boundaryHour = 4): string {
-  const local = new Date(epochMs + offsetAt(epochMs) * 60_000 - boundaryHour * 3_600_000);
+export function dayKey(epochMs: number, offsetAt: OffsetAt = deviceOffset): string {
+  const local = new Date(epochMs + offsetAt(epochMs) * 60_000 - 4 * 3_600_000);
   return `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`;
 }

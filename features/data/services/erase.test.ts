@@ -99,7 +99,7 @@ test('failed memory verification retries three times, keeps intent, refuses writ
   expect(logged).toHaveBeenCalledWith('erase_failed', { errorCode: 'eraseBlocked' });
   expect(logged).not.toHaveBeenCalledWith('erase_finished', {});
   participant.isClear = async () => true;
-  expect(await service.eraseAll()).toEqual({ ok: true });
+  expect(await service.retryBlocked()).toEqual({ ok: true });
   expect(useRecordLifecycle.getState()).toMatchObject({ phase: 'ready', eraseGeneration: 1 });
 });
 
@@ -172,6 +172,77 @@ test('unreadable launch intent blocks without interpreting uncertainty as permis
   storage.exists = async () => { throw new Error('cannot inspect'); };
   expect(await createEraseService(deps).resumePendingErase()).toEqual({ ok: false, code: 'eraseBlocked' });
   expect(core).not.toHaveBeenCalled(); expect(existsSync(join(root, 'record.sqlite'))).toBe(true);
+});
+
+test('Retry after a transient launch inspection failure reopens the intact record when no intent exists', async () => {
+  const { deps, storage, core, root, extra } = await setup();
+  const exists = storage.exists;
+  storage.exists = async () => { throw new Error('cannot inspect'); };
+  const service = createEraseService(deps);
+  expect(await service.resumePendingErase()).toEqual({ ok: false, code: 'eraseBlocked' });
+  storage.exists = exists;
+  expect(await service.retryBlocked()).toEqual({ ok: true });
+  expect(core).not.toHaveBeenCalled();
+  expect(existsSync(`${root}.erase-intent`)).toBe(false);
+  expect(existsSync(join(root, 'record.sqlite'))).toBe(true);
+  expect(existsSync(extra)).toBe(true);
+  expect(useRecordLifecycle.getState()).toMatchObject({ phase: 'ready', eraseGeneration: 1 });
+});
+
+test('Retry stays blocked while launch intent inspection is still unavailable', async () => {
+  const { deps, storage, core, root } = await setup();
+  storage.exists = async () => { throw new Error('cannot inspect'); };
+  const service = createEraseService(deps);
+  expect(await service.resumePendingErase()).toEqual({ ok: false, code: 'eraseBlocked' });
+  expect(await service.retryBlocked()).toEqual({ ok: false, code: 'eraseBlocked' });
+  expect(core).not.toHaveBeenCalled();
+  expect(existsSync(join(root, 'record.sqlite'))).toBe(true);
+  expect(existsSync(`${root}.erase-intent`)).toBe(false);
+  expect(useRecordLifecycle.getState()).toMatchObject({ phase: 'erase-blocked', eraseGeneration: 0 });
+});
+
+test('Retry resumes a durable intent discovered after a launch inspection failure', async () => {
+  const { deps, storage, core, root } = await setup();
+  await storage.writeText(`${root}.erase-intent`, 'pending');
+  const exists = storage.exists;
+  storage.exists = async () => { throw new Error('cannot inspect'); };
+  const service = createEraseService(deps);
+  expect(await service.resumePendingErase()).toEqual({ ok: false, code: 'eraseBlocked' });
+  storage.exists = exists;
+  expect(await service.retryBlocked()).toEqual({ ok: true });
+  expect(core).toHaveBeenCalledTimes(1);
+  expect(existsSync(root)).toBe(false);
+  expect(existsSync(`${root}.erase-intent`)).toBe(false);
+  expect(useRecordLifecycle.getState()).toMatchObject({ phase: 'ready', eraseGeneration: 1 });
+});
+
+test('a confirmed blocked run can retry even if writing the intent failed; success consumes that confirmation', async () => {
+  const { deps, storage, core, root } = await setup();
+  const writeText = storage.writeText;
+  storage.writeText = async () => { throw new Error('cannot write intent'); };
+  const service = createEraseService(deps);
+  expect(await service.eraseAll()).toEqual({ ok: false, code: 'eraseBlocked' });
+  expect(core).not.toHaveBeenCalled();
+  expect(existsSync(`${root}.erase-intent`)).toBe(false);
+  storage.writeText = writeText;
+  expect(await service.retryBlocked()).toEqual({ ok: true });
+  expect(core).toHaveBeenCalledTimes(1);
+  expect(existsSync(root)).toBe(false);
+  // A later inspection failure without an intent must not reuse the completed confirmation.
+  const exists = storage.exists;
+  storage.exists = async () => { throw new Error('cannot inspect'); };
+  expect(await service.resumePendingErase()).toEqual({ ok: false, code: 'eraseBlocked' });
+  storage.exists = exists;
+  expect(await service.retryBlocked()).toEqual({ ok: true });
+  expect(core).toHaveBeenCalledTimes(1);
+});
+
+test('Retry cannot release or erase a record while another operation owns its lifecycle', async () => {
+  const { deps, core } = await setup();
+  useRecordLifecycle.getState().beginExport();
+  expect(await createEraseService(deps).retryBlocked()).toEqual({ ok: false, code: 'busy' });
+  expect(core).not.toHaveBeenCalled();
+  expect(useRecordLifecycle.getState()).toMatchObject({ phase: 'exporting', eraseGeneration: 0 });
 });
 
 test('the verification pause occurs with the database gone but the durable intent still present', async () => {

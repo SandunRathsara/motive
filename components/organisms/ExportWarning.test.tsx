@@ -34,6 +34,16 @@ test('a failed export shows the plain reason and offers retry and dismissal', as
   expect(props.dismiss).toHaveBeenCalledTimes(1);
 });
 
+test('cleanup failure offers dismissal but not a Retry that could share another copy', async () => {
+  const reason = 'The temporary copy could not be removed. Motive will try again next launch.';
+  const props = model({ step: 'failed', code: 'cleanupFailed', reason });
+  await render(<ExportWarning model={props} />);
+  expect(screen.getByRole('alert')).toHaveTextContent(reason);
+  expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Dismiss' }));
+  expect(props.dismiss).toHaveBeenCalledTimes(1);
+});
+
 test('completion counts skipped rows only when present and never claims the file was saved', async () => {
   const props = model({ step: 'done', skippedCount: 2 });
   await render(<ExportWarning model={props} />);

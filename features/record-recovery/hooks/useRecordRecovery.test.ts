@@ -5,7 +5,7 @@ import { useRecordGate } from './useRecordGate';
 import { useRecordRecovery } from './useRecordRecovery';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
 
-jest.mock('@/features/data', () => ({ aiRetentionNotice: 'Data already sent to the AI provider for coaching or food recognition is kept by them for up to 30 days for abuse monitoring, or longer if flagged, and Motive can’t recall it. Motive’s server keeps none of your health or chat content.' }));
+jest.mock('@/features/data', () => ({ deleteAllDisclosure: 'This removes all Motive data on this device. Apple Health data and already-shared exports are not erased. Data already sent to the AI provider for coaching or food recognition is kept by them for up to 30 days for abuse monitoring, or longer if flagged, and Motive can’t recall it. Motive’s server keeps none of your health or chat content.' }));
 
 jest.mock('../services/recovery', () => ({ recoveryService: {
   open: jest.fn(), restore: jest.fn(), erase: jest.fn(), share: jest.fn(), reveal: jest.fn(async () => {}),

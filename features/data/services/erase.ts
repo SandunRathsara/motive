@@ -21,17 +21,15 @@ export interface EraseDependencies {
   lifecycle: { beginErase(): boolean; blockErase(): void; completeErase(reopen?: boolean): void };
   keyValue?: EraseKeyValueAdapter;
   pause?(point: FaultPoint): Promise<void>;
-  attempts?: number;
   /** Test seam: a thrown interruption aborts the run, leaving its durable intent for a new process. */
   afterStep?(step: EraseStep): Promise<void>;
 }
 
 /** Every step is idempotent: the durable sibling marker makes a new process replay the whole erase. */
 export function createEraseService(deps: EraseDependencies) {
+  let confirmedRunPending = false;
   const keys = deps.participants.flatMap((participant) => [...participant.keys ?? []]);
   if (deps.participants.some((participant) => participant.keys !== undefined) && !deps.keyValue) throw new Error('keyValueAdapterRequired');
-  const attempts = deps.attempts ?? 3;
-  if (!Number.isInteger(attempts) || attempts < 1 || attempts > 3) throw new Error('invalidEraseAttempts');
   const storage = () => typeof deps.storage === 'function' ? deps.storage() : Promise.resolve(deps.storage);
   const blocked = (): EraseOutcome => {
     deps.lifecycle.blockErase();
@@ -39,8 +37,7 @@ export function createEraseService(deps: EraseDependencies) {
     return { ok: false, code: 'eraseBlocked' };
   };
   const run = async (reopen: boolean): Promise<EraseOutcome> => {
-    if (!deps.lifecycle.beginErase()) return { ok: false, code: 'busy' };
-    for (let attempt = 0; attempt < attempts; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       let interrupted = false;
       const checkpoint = async (step: EraseStep) => {
         try { await deps.afterStep?.(step); }
@@ -78,6 +75,7 @@ export function createEraseService(deps: EraseDependencies) {
         if (await files.exists(marker)) throw new Error('eraseIntentRemaining');
         await checkpoint('intentRemoved');
         logEvent('erase_finished');
+        confirmedRunPending = false;
         deps.lifecycle.completeErase(reopen);
         return { ok: true };
       } catch (error) {
@@ -87,8 +85,24 @@ export function createEraseService(deps: EraseDependencies) {
     }
     return blocked();
   };
+  const start = (reopen: boolean, confirmed = false): Promise<EraseOutcome> => {
+    if (!deps.lifecycle.beginErase()) return Promise.resolve({ ok: false, code: 'busy' });
+    if (confirmed) confirmedRunPending = true;
+    return run(reopen);
+  };
   return {
-    eraseAll: () => run(true),
+    eraseAll: () => start(true, true),
+    async retryBlocked(): Promise<EraseOutcome> {
+      if (confirmedRunPending) return start(true);
+      if (!deps.lifecycle.beginErase()) return { ok: false, code: 'busy' };
+      try {
+        const files = await storage();
+        if (await files.exists(`${files.root}.erase-intent`)) return run(true);
+      } catch { return blocked(); }
+      // No erase was authorized. Bump the generation so the blocked launch gate opens the intact record.
+      deps.lifecycle.completeErase(true);
+      return { ok: true };
+    },
     async resumePendingErase(): Promise<EraseOutcome> {
       try {
         const files = await storage();
@@ -98,7 +112,7 @@ export function createEraseService(deps: EraseDependencies) {
         return blocked();
       }
       // The launch opener already owns the fresh open; do not trigger a second open via generation.
-      return run(false);
+      return start(false);
     },
   };
 }
@@ -108,4 +122,5 @@ export const eraseService = createEraseService({
   lifecycle: useRecordLifecycle.getState(), pause: (point) => faultInjection.pauseAt(point),
 });
 export const eraseAll = eraseService.eraseAll;
+export const retryBlockedErase = eraseService.retryBlocked;
 export const resumePendingErase = eraseService.resumePendingErase;

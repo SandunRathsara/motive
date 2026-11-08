@@ -193,12 +193,14 @@ test.each(['erasing', 'erase-blocked'] as const)('export refuses work during %s'
   expect(share.share).not.toHaveBeenCalled();
 });
 
-test('failed cleanup is logged without paths and a later launch sweep removes the residue', async () => {
+test('failed post-share cleanup returns a typed failure without claiming success; a later launch sweeps the residue', async () => {
   const remove = storage.remove;
   storage.remove = async () => {};
-  expect((await service().export()).ok).toBe(true);
+  expect(await service().export()).toEqual({ ok: false, code: 'cleanupFailed' });
+  expect(share.share).toHaveBeenCalledTimes(1);
   expect(await storage.exists(join(root, 'export-staging/motive-export-2026-11-08.json'))).toBe(true);
-  expect(logged).toHaveBeenCalledWith('export_failed', { errorCode: 'stagingSweepFailed' });
+  expect(logged).toHaveBeenCalledWith('export_failed', { errorCode: 'cleanupFailed' });
+  expect(logged).not.toHaveBeenCalledWith('export_finished', expect.anything());
   expect(useRecordLifecycle.getState().phase).toBe('ready');
   storage.remove = remove;
   await service().sweepStaging();
@@ -209,6 +211,39 @@ test('a sweep failure never escapes or changes the record lifecycle', async () =
   const exporter = service({ storage: async () => { throw new Error('private device path'); } });
   await expect(exporter.sweepStaging()).resolves.toBeUndefined();
   expect(logged).toHaveBeenCalledWith('export_failed', { errorCode: 'stagingSweepFailed' });
+  expect(useRecordLifecycle.getState().phase).toBe('ready');
+});
+
+test.each(['removeThrows', 'remaining', 'inspectionThrows'] as const)('the launch sweep retries a transient %s once without blocking the record', async (failure) => {
+  const path = join(root, 'export-staging');
+  await writeFile(join(path, 'leftover.json'), 'private fixture');
+  const remove = jest.spyOn(storage, 'remove');
+  if (failure === 'removeThrows') remove.mockRejectedValueOnce(new Error('private path'));
+  else if (failure === 'remaining') remove.mockResolvedValueOnce(undefined);
+  else jest.spyOn(storage, 'exists').mockRejectedValueOnce(new Error('cannot verify a private path'));
+  await expect(service().sweepStaging()).resolves.toBeUndefined();
+  expect(remove).toHaveBeenCalledTimes(2);
+  expect(await storage.exists(path)).toBe(false);
+  expect(useRecordLifecycle.getState().phase).toBe('ready');
+});
+
+test('persistent staging residue is logged after two launch removal attempts without blocking the record', async () => {
+  const path = join(root, 'export-staging');
+  await writeFile(join(path, 'leftover.json'), 'private fixture');
+  const remove = jest.spyOn(storage, 'remove').mockResolvedValue(undefined);
+  await expect(service().sweepStaging()).resolves.toBeUndefined();
+  expect(remove).toHaveBeenCalledTimes(2);
+  expect(await storage.exists(path)).toBe(true);
+  expect(logged).toHaveBeenCalledWith('export_failed', { errorCode: 'stagingSweepFailed' });
+  expect(useRecordLifecycle.getState().phase).toBe('ready');
+});
+
+test.each(['remove', 'exists'] as const)('a post-share cleanup %s exception returns cleanupFailed without exposing private details', async (method) => {
+  jest.spyOn(storage, method).mockRejectedValue(new Error('private file path'));
+  expect(await service().export()).toEqual({ ok: false, code: 'cleanupFailed' });
+  expect(share.share).toHaveBeenCalledTimes(1);
+  expect(logged).toHaveBeenCalledWith('export_failed', { errorCode: 'cleanupFailed' });
+  expect(logged).not.toHaveBeenCalledWith('export_finished', expect.anything());
   expect(useRecordLifecycle.getState().phase).toBe('ready');
 });
 
