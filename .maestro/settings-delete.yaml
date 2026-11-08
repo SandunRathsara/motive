@@ -1,0 +1,27 @@
+appId: dev.motive.app
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: "Today"
+    selected: true
+- tapOn: "Settings"
+- tapOn: "Delete all data"
+- assertVisible: "Before you delete"
+- assertVisible: 'This removes all Motive data on this device\. Apple Health data and already-shared exports are not erased\..*'
+# Keep the confirmation reachable with enlarged text as well as the default simulator size.
+- scrollUntilVisible:
+    element:
+      text: "Continue"
+    direction: DOWN
+- tapOn: "Continue"
+- assertVisible: "This cannot be undone. Motive will return to a fresh start."
+- tapOn: "Delete everything"
+- assertVisible: "Your daily overview is coming next. There’s nothing you need to do here yet."
+- assertVisible: "Not built yet"
+- assertVisible:
+    text: "Today"
+    selected: true
+- assertNotVisible: "MOTIVE · RECOVERY"
+- assertNotVisible: "Deletion not finished"
+- assertNotVisible: "Export data"
