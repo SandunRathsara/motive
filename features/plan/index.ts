@@ -6,3 +6,4 @@ export type { PlanStatus, PlanAppendResult } from './services/plan-store';
 export { planKeys } from './hooks/query-keys';
 export { useCurrentPlan } from './hooks/useCurrentPlan';
 export { planExportSection } from './services/export-section';
+export { planEraseParticipant } from './services/erase-participant';
