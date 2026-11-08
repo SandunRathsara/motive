@@ -6,6 +6,7 @@ import type { ExportSection } from '@/lib/contracts/export-section';
 import { migrateRecord } from '@/lib/persistence/runner';
 import { nodeExecutor } from '@/lib/persistence/testing/node-executor';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
+import { exerciseLibrary, exerciseLibraryVersion } from '@/features/workouts';
 import { exportEnvelopeSchema } from '../data.schemas';
 import { exportSections } from '../registry/export-sections';
 import { createExportService } from './export';
@@ -13,6 +14,7 @@ import type { ShareAdapter } from './share';
 
 const build = { variant: 'verification', version: '1.0.0', buildNumber: '2', buildId: '1.0.0+2', gitTag: 'build/verification/1.0.0+2' } as const;
 const metricId = '11111111-1111-4111-8111-111111111111';
+const emptyCounts = { gateMetrics: 0, healthSignals: 0, profile: 0, plan: 0, exerciseLibrary: 0 };
 let root: string;
 let db: SqlExecutor;
 let storage: RecordStorage;
@@ -56,21 +58,23 @@ afterEach(async () => {
 });
 
 test('shares one validated snapshot with canonical metrics and local-date filename, then removes staging', async () => {
-  expect(await service().export()).toEqual({ ok: true, skippedCount: 0, skippedRowCounts: { gateMetrics: 0, healthSignals: 0 } });
+  expect(await service().export()).toEqual({ ok: true, skippedCount: 0, skippedRowCounts: emptyCounts });
   expect(exportEnvelopeSchema.safeParse(captured).success).toBe(true);
   expect(captured).toEqual({
-    format: 'motive-personal-health-record', formatVersion: 1, schemaVersion: 2,
+    format: 'motive-personal-health-record', formatVersion: 1, schemaVersion: 3,
     exportedAt: '2026-11-08T01:30:00.000+05:30', build,
     canonicalUnits: { bodyMass: 'kg', length: 'cm', foodMass: 'g', volume: 'ml', energy: 'kcal', duration: 's', timestamp: 'ISO-8601 with offset' },
     sections: { gateMetrics: { version: 1, owner: 'metrics', records: [{
       id: '11111111-1111-4111-8111-111111111111', eventType: 'set_logging', durationS: 1.25, build: '1.0.0+1', recordedAt: '2026-11-08T00:00:00.000+05:30',
-    }] }, healthSignals: { version: 1, owner: 'health', records: [] } },
-    skippedRowCounts: { gateMetrics: 0, healthSignals: 0 },
+    }] }, healthSignals: { version: 1, owner: 'health', records: [] },
+    profile: { version: 1, owner: 'profile', records: [] }, plan: { version: 1, owner: 'plan', records: [] },
+    exerciseLibrary: { version: 1, owner: 'workouts', records: exerciseLibrary.map((exercise) => ({ ...exercise, libraryVersion: exerciseLibraryVersion })).sort((a, b) => a.id.localeCompare(b.id)) } },
+    skippedRowCounts: emptyCounts,
   });
   expect(share.share).toHaveBeenCalledWith({ uri: join(root, 'export-staging/motive-export-2026-11-08.json'), mimeType: 'application/json', uti: 'public.json', dialogTitle: 'Export Motive data' });
   expect(await storage.exists(join(root, 'export-staging/motive-export-2026-11-08.json'))).toBe(false);
   expect(useRecordLifecycle.getState().phase).toBe('ready');
-  expect(logged).toHaveBeenCalledWith('export_finished', { count: 1 });
+  expect(logged).toHaveBeenCalledWith('export_finished', { count: 31 });
 });
 
 test.each([
@@ -87,7 +91,7 @@ test.each([
 
 test('invalid stored rows remain on disk, but are skipped and counted in both file and outcome', async () => {
   await db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['not-a-uuid', 'set_logging', -1, 'old-build', 1]);
-  expect(await service().export()).toEqual({ ok: true, skippedCount: 1, skippedRowCounts: { gateMetrics: 1, healthSignals: 0 } });
+  expect(await service().export()).toEqual({ ok: true, skippedCount: 1, skippedRowCounts: { ...emptyCounts, gateMetrics: 1 } });
   expect(captured).toMatchObject({ skippedRowCounts: { gateMetrics: 1 }, sections: { gateMetrics: { records: [{ id: metricId }] } } });
   expect(await db.getFirst('SELECT count(*) AS count FROM gate_metric')).toEqual({ count: 2 });
 });
@@ -115,14 +119,14 @@ test('all sections and schema version share one snapshot while a queued relation
   const sections: ExportSection[] = [
     { key: 'before', version: 1, owner: 'fixture', tables: ['gate_metric'], read: async (tx) => {
       const records = await tx.getAll('SELECT id, build FROM gate_metric');
-      queuedWrite = db.exec("UPDATE gate_metric SET build = 'new-build'; PRAGMA user_version = 3;");
+      queuedWrite = db.exec("UPDATE gate_metric SET build = 'new-build'; PRAGMA user_version = 4;");
       return { records, skippedCount: 0 };
     } },
     { key: 'after', version: 1, owner: 'fixture', tables: ['gate_metric'], read: async (tx) => ({ records: await tx.getAll('SELECT id, build FROM gate_metric'), skippedCount: 0 }) },
   ];
   expect((await service({ sections }).export()).ok).toBe(true);
   await queuedWrite;
-  expect(captured).toMatchObject({ schemaVersion: 2, sections: {
+  expect(captured).toMatchObject({ schemaVersion: 3, sections: {
     before: { records: [{ id: '11111111-1111-4111-8111-111111111111', build: '1.0.0+1' }] },
     after: { records: [{ id: '11111111-1111-4111-8111-111111111111', build: '1.0.0+1' }] },
   } });
@@ -182,7 +186,7 @@ test('a second operation is busy while the sheet is open; closing it by cancel s
   expect(await service().export()).toEqual({ ok: false, code: 'busy' });
   expect(useRecordLifecycle.getState().phase).toBe('exporting');
   closeSheet();
-  expect(await pending).toEqual({ ok: true, skippedCount: 0, skippedRowCounts: { gateMetrics: 0, healthSignals: 0 } });
+  expect(await pending).toEqual({ ok: true, skippedCount: 0, skippedRowCounts: emptyCounts });
   expect(await storage.exists(join(root, 'export-staging/motive-export-2026-11-08.json'))).toBe(false);
   expect(useRecordLifecycle.getState().phase).toBe('ready');
 });

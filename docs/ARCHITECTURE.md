@@ -105,6 +105,7 @@ Additional rules:
 
 - Cross-feature imports must use an explicitly exported public contract. If sharing becomes bidirectional, extract the shared contract to `/lib/contracts` rather than create a cycle.
 - Nutrition, workouts and onboarding use the `plan` public contract. The `plan` feature imports none of them ([Slice 4](https://github.com/SandunRathsara/motive/issues/22)).
+- `lib/contracts/training-program.ts` owns the shared persisted program/template schemas used by plan and workouts; workouts retains bundled-content ownership and re-exports these schemas. `lib/contracts/stored-json.ts` validates JSON storage syntax before feature schemas validate its shape.
 - UI calls feature hooks or service contracts, never concrete backend/native adapters.
 - Services return domain objects or typed errors, not provider responses.
 - Zod validation happens at network, native, storage, and other untrusted boundaries before data enters domain logic.

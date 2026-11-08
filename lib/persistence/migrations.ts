@@ -57,4 +57,69 @@ CREATE TABLE health_sync_anchor (
   anchor TEXT,
   backfill_start_ms INTEGER NOT NULL
 );`,
+}, {
+  version: 3,
+  // Static insert-only content: lib must never import features/workouts. A parity test guards the seed.
+  sql: `CREATE TABLE profile (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  sex TEXT NOT NULL,
+  age INTEGER NOT NULL,
+  height_cm REAL NOT NULL,
+  activity_level REAL NOT NULL,
+  weight_kg REAL NOT NULL,
+  weight_origin_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE starting_estimate (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  value_kcal REAL NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE plan_version (
+  number INTEGER PRIMARY KEY NOT NULL CHECK (number > 0),
+  created_at INTEGER NOT NULL,
+  source TEXT NOT NULL,
+  source_ref INTEGER,
+  snapshot_json TEXT NOT NULL,
+  diff_json TEXT NOT NULL
+);
+CREATE TABLE exercise_library (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  muscle_group TEXT NOT NULL,
+  equipment TEXT NOT NULL,
+  bodyweight INTEGER NOT NULL CHECK (bodyweight IN (0, 1)),
+  library_version INTEGER NOT NULL CHECK (library_version > 0)
+);
+INSERT INTO exercise_library (id, name, muscle_group, equipment, bodyweight, library_version) VALUES
+('bench-press', 'Bench Press', 'chest', 'barbell', 0, 1),
+('incline-dumbbell-press', 'Incline Dumbbell Press', 'chest', 'dumbbell', 0, 1),
+('push-up', 'Push-up', 'chest', 'none', 1, 1),
+('lat-pulldown', 'Lat Pulldown', 'back', 'machine', 0, 1),
+('barbell-row', 'Barbell Row', 'back', 'barbell', 0, 1),
+('seated-cable-row', 'Seated Cable Row', 'back', 'cable', 0, 1),
+('dumbbell-shoulder-press', 'Dumbbell Shoulder Press', 'shoulders', 'dumbbell', 0, 1),
+('dumbbell-lateral-raise', 'Dumbbell Lateral Raise', 'shoulders', 'dumbbell', 0, 1),
+('machine-shoulder-press', 'Machine Shoulder Press', 'shoulders', 'machine', 0, 1),
+('barbell-curl', 'Barbell Curl', 'biceps', 'barbell', 0, 1),
+('dumbbell-curl', 'Dumbbell Curl', 'biceps', 'dumbbell', 0, 1),
+('cable-curl', 'Cable Curl', 'biceps', 'cable', 0, 1),
+('cable-triceps-pushdown', 'Cable Triceps Pushdown', 'triceps', 'cable', 0, 1),
+('dumbbell-overhead-triceps-extension', 'Dumbbell Overhead Triceps Extension', 'triceps', 'dumbbell', 0, 1),
+('lying-triceps-extension', 'Lying Triceps Extension', 'triceps', 'barbell', 0, 1),
+('back-squat', 'Back Squat', 'quadriceps', 'barbell', 0, 1),
+('leg-press', 'Leg Press', 'quadriceps', 'machine', 0, 1),
+('leg-extension', 'Leg Extension', 'quadriceps', 'machine', 0, 1),
+('romanian-deadlift', 'Romanian Deadlift', 'hamstrings', 'barbell', 0, 1),
+('lying-leg-curl', 'Lying Leg Curl', 'hamstrings', 'machine', 0, 1),
+('seated-leg-curl', 'Seated Leg Curl', 'hamstrings', 'machine', 0, 1),
+('barbell-hip-thrust', 'Barbell Hip Thrust', 'glutes', 'barbell', 0, 1),
+('glute-bridge', 'Glute Bridge', 'glutes', 'none', 1, 1),
+('cable-kickback', 'Cable Kickback', 'glutes', 'cable', 0, 1),
+('standing-calf-raise', 'Standing Calf Raise', 'calves', 'machine', 0, 1),
+('seated-calf-raise', 'Seated Calf Raise', 'calves', 'machine', 0, 1),
+('bodyweight-calf-raise', 'Bodyweight Calf Raise', 'calves', 'none', 1, 1),
+('crunch', 'Crunch', 'core', 'none', 1, 1),
+('reverse-crunch', 'Reverse Crunch', 'core', 'none', 1, 1),
+('cable-crunch', 'Cable Crunch', 'core', 'cable', 0, 1);`,
 }];
