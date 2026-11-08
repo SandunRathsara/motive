@@ -28,7 +28,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supportsTablet: false,
     },
     web: { bundler: 'metro' },
-    plugins: ['expo-router', 'expo-sqlite', 'expo-sharing'],
+    plugins: ['expo-router', 'expo-sqlite', 'expo-sharing', './modules/motive-healthkit/app.plugin.js'],
     experiments: { typedRoutes: true, reactCompiler: true },
     extra: {
       ...config.extra,

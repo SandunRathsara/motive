@@ -13,6 +13,7 @@ export default function SettingsRoute() {
       exportPaused: verification.available && lifecycle.paused === 'afterStaging',
       onOpenReport: () => router.push('/settings/report') }}
     about={{ onOpen: () => router.push('/settings/about') }}
+    health={{ onOpen: () => router.push('/settings/signals') }}
     verification={verification.available ? verification : undefined}
   />;
 }

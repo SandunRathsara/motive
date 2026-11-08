@@ -8,6 +8,7 @@ import { RecoveryTemplate } from '@/components/templates/RecoveryTemplate';
 import { EraseStatusTemplate } from '@/components/templates/EraseStatusTemplate';
 import { useRecordGate, useRecordRecovery } from '@/features/record-recovery';
 import { useUncleanExitTracking } from '@/features/metrics';
+import { healthSignalTypes, signalTitles, useHealthSyncOnOpen } from '@/features/health';
 import { useEraseLifecycle } from '@/features/data';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
 
@@ -20,6 +21,7 @@ export default function RootLayout() {
   const resetGeneration = useRef(generation);
   const resetPending = useRef(false);
   useUncleanExitTracking(gate.status === 'ready' && (lifecycle.phase === 'ready' || lifecycle.phase === 'exporting'));
+  useHealthSyncOnOpen(gate.status === 'ready' && (lifecycle.phase === 'ready' || lifecycle.phase === 'exporting'));
 
   useEffect(() => {
     // Also cover launch-resumed erases, which deliberately don't bump the generation.
@@ -45,6 +47,12 @@ export default function RootLayout() {
     <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
     <Stack.Screen name="settings/report" options={{ title: 'Phase 1 report' }} />
     <Stack.Screen name="settings/about" options={{ title: 'About' }} />
+    <Stack.Screen name="settings/signals" options={{ title: 'Health Signals' }} />
+    <Stack.Screen name="settings/signal/[type]" options={({ route }) => {
+      const type = (route.params as { type?: string } | undefined)?.type;
+      const signal = healthSignalTypes.find((candidate) => candidate === type);
+      return { title: signal ? signalTitles[signal] : 'Signal' };
+    }} />
   </Stack>;
   return (
     <QueryClientProvider client={queryClient}>

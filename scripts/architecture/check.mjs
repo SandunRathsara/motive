@@ -51,18 +51,21 @@ export function checkArchitecture(root = process.cwd()) {
     const styleSheets = new Set(['StyleSheet']);
     const nativeModals = new Set();
     const reactNativeNamespaces = new Set();
+    const isHealthService = relative.startsWith('features/health/services/');
+    const nativeModuleLoaders = new Set(['requireNativeModule', 'requireOptionalNativeModule']);
 
     function checkImport(node, specifier, typeOnly = false, names = []) {
       const target = localTarget(root, file, specifier);
       const dependency = target?.split('/')[0];
       const isPackage = target === null;
+      const healthNativeModule = /^modules\/motive-healthkit(?:\/|$)/.test(target ?? specifier);
       // docs/ARCHITECTURE.md §4: no concrete provider SDKs in the application source tree.
       if (isPackage && PROVIDER_PACKAGES.some((pattern) => pattern.test(specifier))) {
         add(node, 'provider-sdk', `Provider/telemetry package '${specifier}' is forbidden.`, 4);
       }
       // docs/ARCHITECTURE.md §4: HealthKit adapters are owned by the health service boundary.
-      if (isPackage && HEALTHKIT.test(specifier) && !relative.startsWith('features/health/services/')) {
-        add(node, 'healthkit-boundary', `HealthKit package '${specifier}' belongs in features/health/services/.`, 4);
+      if (((isPackage && HEALTHKIT.test(specifier)) || healthNativeModule) && !isHealthService) {
+        add(node, 'healthkit-boundary', `HealthKit reference '${specifier}' belongs in features/health/services/.`, 4);
       }
       // docs/ARCHITECTURE.md §2, §5: shared client stores live only in /store.
       // docs/ARCHITECTURE.md §4: the native share sheet is reached only through the data feature's share adapter.
@@ -83,7 +86,7 @@ export function checkArchitecture(root = process.cwd()) {
         forbidden = dependency !== 'components' && !(target === 'lib/theme' || target.startsWith('lib/theme/')) && !(typeOnly && featureContract);
       } else if (layer === 'features' && target !== null) {
         // docs/ARCHITECTURE.md §4–§5: feature hooks/services may read shared client stores.
-        forbidden = !['features', 'lib', 'store'].includes(dependency) || (dependency === 'features' && target.split('/')[1] !== domain && !/^features\/[^/]+\/index\.ts$/.test(target));
+        forbidden = (!['features', 'lib', 'store'].includes(dependency) && !(isHealthService && healthNativeModule)) || (dependency === 'features' && target.split('/')[1] !== domain && !/^features\/[^/]+\/index\.ts$/.test(target));
       } else if (layer === 'store' && target !== null) {
         // docs/ARCHITECTURE.md §4: independent stores depend only on domain types and pure lib utilities/contracts.
         // A colocated test may import the one store it covers (ARCHITECTURE §2, §8).
@@ -111,6 +114,11 @@ export function checkArchitecture(root = process.cwd()) {
         const typeOnly = !!clause?.isTypeOnly || (!!elements.length && !clause?.name && elements.every((element) => element.isTypeOnly));
         const specifier = node.moduleSpecifier.text;
         checkImport(node, specifier, typeOnly, bindings && ts.isNamespaceImport(bindings) ? ['*'] : elements.map((element) => (element.propertyName ?? element.name).text));
+        if (['expo', 'expo-modules-core'].includes(specifier) && !typeOnly) {
+          for (const element of elements) {
+            if (['requireNativeModule', 'requireOptionalNativeModule'].includes((element.propertyName ?? element.name).text)) nativeModuleLoaders.add(element.name.text);
+          }
+        }
         if (/^zustand(?:\/|$)/.test(specifier) && !typeOnly) {
           for (const element of elements) if (['create', 'createStore'].includes((element.propertyName ?? element.name).text)) zustandFactories.add(element.name.text);
           if (bindings && ts.isNamespaceImport(bindings)) zustandNamespaces.add(bindings.name.text);
@@ -128,6 +136,13 @@ export function checkArchitecture(root = process.cwd()) {
         checkImport(node, node.argument.literal.text, true);
       } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require')) && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
         checkImport(node, node.arguments[0].text, false, ['*']);
+      }
+      // TECH_STACK HK-2: Expo's generic native loader must not bypass the health boundary.
+      if (!isHealthService && ts.isCallExpression(node) && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0]) && node.arguments[0].text === 'MotiveHealthKit') {
+        const callee = node.expression;
+        const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text :
+          ts.isElementAccessExpression(callee) && ts.isStringLiteralLike(callee.argumentExpression) ? callee.argumentExpression.text : '';
+        if (nativeModuleLoaders.has(name)) add(node, 'healthkit-boundary', 'MotiveHealthKit belongs in features/health/services/.', 4);
       }
       // docs/ARCHITECTURE.md §2, §4: catch JSX syntax as well as JSX file extensions.
       if (layer === 'features' && !/\.[jt]sx$/.test(file) && (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node))) add(node, 'feature-jsx', 'Features must not contain JSX.', 4);

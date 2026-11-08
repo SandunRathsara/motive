@@ -50,6 +50,14 @@ test('missing source roots and import-looking comments/strings are harmless', ()
   expect(run().status).toBe(0);
 });
 
+test('HealthKit loader comments/strings and unrelated native modules are harmless', () => {
+  writeTree({ 'lib/native/other.ts': `import { requireNativeModule } from 'expo';
+// requireNativeModule('MotiveHealthKit');
+const example = "requireOptionalNativeModule('MotiveHealthKit')";
+requireNativeModule('MotiveRecordDirectory');` });
+  expect(run().status).toBe(0);
+});
+
 test('React Native Modal presentation enums are behavior, not inline visual styles', () => {
   writeTree({ 'components/organisms/Confirmation.tsx': `import { Modal } from 'react-native';
 export const Confirmation = () => <Modal presentationStyle="pageSheet" />;` });

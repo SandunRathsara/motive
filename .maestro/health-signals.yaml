@@ -1,0 +1,110 @@
+appId: dev.motive.app
+---
+- launchApp:
+    clearState: true
+# Six navigation/confirmation actions; assert the destination after each one.
+- assertVisible:
+    text: "Today"
+    selected: true
+- assertNotVisible: "MOTIVE · RECOVERY"
+- tapOn: "Settings"
+- assertVisible: "Phase 1 report"
+- assertVisible: "Health Signals"
+- tapOn: "Health Signals"
+- assertVisible:
+    id: "signals-list"
+- assertVisible: "Connect Apple Health"
+- assertVisible: "Not connected to Apple Health"
+- assertVisible: "Not synced yet"
+- assertVisible:
+    id: "signal-row-bodyMass"
+    text: "Weight"
+# Coverage may legitimately read "0 of 14"; an unknown signal value must not be zero.
+- assertNotVisible: '(?i).*denied.*'
+- assertNotVisible: '^0( (kg|ms|bpm|h|workouts?))?$'
+- scrollUntilVisible:
+    element:
+      id: "signal-row-sleep"
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: "signal-row-sleep"
+    text: "Sleep"
+- assertVisible: "Not yet available · 0 of 1 nights"
+- assertNotVisible: '(?i).*denied.*'
+- assertNotVisible: '^0( (kg|ms|bpm|h|workouts?))?$'
+- scrollUntilVisible:
+    element:
+      id: "signal-row-restingHeartRate"
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: "signal-row-restingHeartRate"
+    text: "Resting heart rate"
+- assertVisible: "Not yet available · 0 of 1 days"
+- assertNotVisible: '(?i).*denied.*'
+- assertNotVisible: '^0( (kg|ms|bpm|h|workouts?))?$'
+- scrollUntilVisible:
+    element:
+      id: "signal-row-hrv"
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: "signal-row-hrv"
+    text: "HRV"
+- assertVisible: "Not yet available · 0 of 1 days"
+- assertNotVisible: '(?i).*denied.*'
+- assertNotVisible: '^0( (kg|ms|bpm|h|workouts?))?$'
+- scrollUntilVisible:
+    element:
+      id: "signal-row-workout"
+    direction: DOWN
+    centerElement: true
+# The source title is "Health workouts", not "Workouts".
+- assertVisible:
+    id: "signal-row-workout"
+    text: "Health workouts"
+- assertVisible: "Not connected to Apple Health"
+- assertNotVisible: '(?i).*denied.*'
+- assertNotVisible: '^0( (kg|ms|bpm|h|workouts?))?$'
+- scrollUntilVisible:
+    element:
+      id: "signal-row-bodyMass"
+    direction: UP
+    centerElement: true
+- assertVisible:
+    id: "signal-row-bodyMass"
+- tapOn:
+    id: "signal-row-bodyMass"
+- assertVisible: "Weight"
+- assertNotVisible:
+    id: "signals-list"
+- assertVisible: "Delete this signal's history"
+- assertVisible:
+    id: "signal-history-empty"
+- assertNotVisible: '(?i).*denied.*'
+- assertNotVisible: '^0( (kg|ms|bpm|h|workouts?))?$'
+- tapOn: "Delete this signal's history"
+# RN's Modal testID is not exposed in this iOS hierarchy; assert the sheet's content.
+- assertVisible: 'Delete Weight history\?'
+- assertVisible: "This deletes only the cached Weight history in Motive."
+- assertVisible: "Apple Health keeps its own data. Turn off access in Apple Health first, otherwise the next sync reads the history again."
+- assertVisible: "Confirm delete signal history"
+- tapOn: "Confirm delete signal history"
+- assertNotVisible: 'Delete Weight history\?'
+- assertNotVisible: "Confirm delete signal history"
+- assertNotVisible: "Deleting cached history…"
+- assertNotVisible: "Couldn't delete this signal's history. Try again when the record is ready."
+- assertVisible:
+    id: "signal-history-empty"
+- assertVisible: "No cached samples for this signal."
+- assertVisible:
+    text: "Delete this signal's history"
+    enabled: true
+- tapOn: "Health Signals"
+- assertVisible:
+    id: "signals-list"
+- assertVisible: "Connect Apple Health"
+- assertNotVisible:
+    id: "signal-history-empty"
+- assertNotVisible: "MOTIVE · RECOVERY"

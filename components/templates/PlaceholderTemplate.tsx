@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-type Props = { title: string; message: string; onOpenSettings?: () => void };
+type Props = { title: string; message: string; onOpenSettings?: () => void; trendLine?: ReactNode };
 
-export function PlaceholderTemplate({ title, message, onOpenSettings }: Props) {
+export function PlaceholderTemplate({ title, message, onOpenSettings, trendLine }: Props) {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-bg">
       <ScrollView>
@@ -19,6 +20,7 @@ export function PlaceholderTemplate({ title, message, onOpenSettings }: Props) {
               </View>
             </Pressable>}
           </View>
+          {trendLine}
           <View className="gap-3 rounded-lg border border-line-soft bg-surface p-6">
             <Text className="text-xl font-semibold text-text">Not built yet</Text>
             <Text className="text-lg text-muted">{message}</Text>

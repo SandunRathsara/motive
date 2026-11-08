@@ -15,7 +15,7 @@ test('empty section slots render nothing; supplied slots stay in the specified o
   await render(<SettingsTemplate />);
   expect(screen.queryAllByRole('header')).toHaveLength(0);
   await screen.rerender(<SettingsTemplate plan={<Text>Plan controls</Text>} training={<Text>Training controls</Text>}
-    aiAndConsents={<Text>Consent controls</Text>} health={<Text>Health controls</Text>}
+    aiAndConsents={<Text>Consent controls</Text>} health={{ onOpen: jest.fn() }}
     data={{ exportModel, deleteModel, busy: false, exportPaused: false, onOpenReport: jest.fn() }}
     about={{ onOpen: jest.fn() }} verification={verification} />);
   expect(screen.getAllByRole('header').map((node) => node.props.children)).toEqual([
@@ -28,8 +28,11 @@ test('empty section slots render nothing; supplied slots stay in the specified o
 test('data and navigation rows call their supplied actions, and busy operations disable export and deletion', async () => {
   const onOpenReport = jest.fn();
   const onOpen = jest.fn();
+  const onOpenHealth = jest.fn();
   const data = { exportModel, deleteModel, busy: false, exportPaused: false, onOpenReport };
-  await render(<SettingsTemplate data={data} about={{ onOpen }} />);
+  await render(<SettingsTemplate data={data} about={{ onOpen }} health={{ onOpen: onOpenHealth }} />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Health Signals' }));
+  expect(onOpenHealth).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByRole('button', { name: 'Export data' }));
   expect(exportModel.begin).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByRole('button', { name: 'Delete all data' }));

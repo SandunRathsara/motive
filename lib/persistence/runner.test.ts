@@ -11,6 +11,7 @@ const schema = (db: SqlExecutor) => db.getAll<{ type: string; name: string; sql:
   "SELECT type, name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
 );
 const databases: SqlExecutor[] = [];
+const v1Migrations = migrations.slice(0, 1);
 const dirs: string[] = [];
 function database(path?: string) { const db = nodeExecutor(path); databases.push(db); return db; }
 afterEach(async () => {
@@ -18,13 +19,15 @@ afterEach(async () => {
   dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true }));
 });
 
-test('fresh install commits the only table, version, index and SQL constraints', async () => {
+test('fresh install commits all tables, version, indexes and SQL constraints', async () => {
   const db = database();
   const snapshot = jest.fn(async () => {});
   expect(await migrateRecord(db, snapshot)).toBeNull();
   expect(snapshot).not.toHaveBeenCalled();
   expect(await schemaVersion(db)).toBe(migrations.length);
-  expect((await schema(db)).map((row) => row.name)).toEqual(['gate_metric_recorded_at', 'gate_metric']);
+  expect((await schema(db)).map((row) => row.name)).toEqual([
+    'gate_metric_recorded_at', 'health_sample_type_start', 'gate_metric', 'health_sample', 'health_sync_anchor', 'signal_availability',
+  ]);
   await db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['id', 'unclean_exit', null, '1+1', 1]);
   await expect(db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['bad', 'unclean_exit', 3, '1+1', 1])).rejects.toThrow();
   await expect(db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['bad', 'other', null, '1+1', 1])).rejects.toThrow();
@@ -44,9 +47,9 @@ test.each([[], [{ quick_check: 'corrupt' }], [{ wrong: 'ok' }], [{ quick_check: 
 
 test('failure on step 3 of a 1→4 upgrade rolls back every pending DDL and version', async () => {
   const db = database();
-  await migrateRecord(db, async () => {});
+  await migrateRecord(db, async () => {}, v1Migrations);
   const before = await schema(db);
-  const list = [...migrations,
+  const list = [...v1Migrations,
     { version: 2, sql: 'CREATE TABLE second(id)' },
     { version: 3, sql: 'CREATE TABLE third(id)' },
     { version: 4, sql: 'CREATE TABLE partial(id); INSERT INTO missing VALUES (1);' },
@@ -72,7 +75,7 @@ test('newer schema refusal leaves an on-disk database byte-identical', async () 
   const before = hash();
   const newer = database(path);
   const snapshot = jest.fn();
-  expect(await migrateRecord(newer, snapshot)).toEqual({ code: 'newerSchema', found: 99, supported: 1 });
+  expect(await migrateRecord(newer, snapshot)).toEqual({ code: 'newerSchema', found: 99, supported: migrations.length });
   await newer.close();
   expect(hash()).toBe(before);
   expect(snapshot).not.toHaveBeenCalled();
@@ -82,8 +85,8 @@ test('one pre-migration snapshot captures v1; a later upgrade replaces it with v
   const dir = mkdtempSync(join(tmpdir(), 'motive-snapshot-')); dirs.push(dir);
   const path = join(dir, 'snapshot.sqlite');
   const db = database();
-  await migrateRecord(db, async () => {});
-  const list = [...migrations, { version: 2, sql: 'CREATE TABLE second(id)' }, { version: 3, sql: 'CREATE TABLE third(id)' }];
+  await migrateRecord(db, async () => {}, v1Migrations);
+  const list = [...v1Migrations, { version: 2, sql: 'CREATE TABLE second(id)' }, { version: 3, sql: 'CREATE TABLE third(id)' }];
   let count = 0;
   const snapshot = async () => {
     count++;
@@ -105,9 +108,9 @@ test('one pre-migration snapshot captures v1; a later upgrade replaces it with v
 
 test('skipped installs migrate directly from v1 through v3 with a single snapshot', async () => {
   const db = database();
-  await migrateRecord(db, async () => {});
+  await migrateRecord(db, async () => {}, v1Migrations);
   const snapshot = jest.fn(async () => {});
-  const list = [...migrations, { version: 2, sql: 'CREATE TABLE second(id)' }, { version: 3, sql: 'CREATE TABLE third(id)' }];
+  const list = [...v1Migrations, { version: 2, sql: 'CREATE TABLE second(id)' }, { version: 3, sql: 'CREATE TABLE third(id)' }];
   expect(await migrateRecord(db, snapshot, list)).toBeNull();
   expect(await schemaVersion(db)).toBe(3);
   expect((await schema(db)).map((row) => row.name)).toContain('third');
@@ -127,9 +130,9 @@ test.each(readdirSync(fixtures).filter((name) => /^schema-v\d+\.sql$/.test(name)
 
 test('integrity or snapshot failure does not apply any migrations', async () => {
   const db = database();
-  await migrateRecord(db, async () => {});
+  await migrateRecord(db, async () => {}, v1Migrations);
   const before = await schema(db);
-  expect(await migrateRecord(db, async () => { throw new Error('diskFull'); }, [...migrations, { version: 2, sql: 'CREATE TABLE second(id)' }])).toEqual({ code: 'migrationFailed', from: 1, to: 2 });
+  expect(await migrateRecord(db, async () => { throw new Error('diskFull'); }, [...v1Migrations, { version: 2, sql: 'CREATE TABLE second(id)' }])).toEqual({ code: 'migrationFailed', from: 1, to: 2 });
   expect(await schemaVersion(db)).toBe(1);
   expect(await schema(db)).toEqual(before);
 });

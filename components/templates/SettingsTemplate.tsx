@@ -11,7 +11,7 @@ export function SettingsTemplate({ plan, training, aiAndConsents, health, data, 
   plan?: ReactNode;
   training?: ReactNode;
   aiAndConsents?: ReactNode;
-  health?: ReactNode;
+  health?: { onOpen: () => void };
   data?: DataControlsProps;
   about?: { onOpen: () => void };
   verification?: FaultInjectionViewModel;
@@ -21,7 +21,7 @@ export function SettingsTemplate({ plan, training, aiAndConsents, health, data, 
       <SettingsSection title="Plan">{plan}</SettingsSection>
       <SettingsSection title="Training">{training}</SettingsSection>
       <SettingsSection title="AI and consents">{aiAndConsents}</SettingsSection>
-      <SettingsSection title="Health">{health}</SettingsSection>
+      <SettingsSection title="Health">{health && <SettingsRow label="Health Signals" navigation onPress={health.onOpen} />}</SettingsSection>
       <SettingsSection title="Data">{data && <DataControls {...data} />}</SettingsSection>
       <SettingsSection title="About">{about && <SettingsRow label="About" navigation onPress={about.onOpen} />}</SettingsSection>
       <SettingsSection title="Verification">

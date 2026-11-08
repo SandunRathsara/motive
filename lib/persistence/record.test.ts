@@ -7,6 +7,7 @@ import { createLaunchSentinel, eraseRecord, openRecord, rawDatabaseUri, RecordNo
 import { nodeExecutor } from './testing/node-executor';
 import * as runner from './runner';
 import { inspectVersion } from './inspect-version';
+import { migrations } from './migrations';
 
 const root = 'file:///test/Application%20Support/Motive';
 function fileStorage() {
@@ -29,7 +30,7 @@ function fileStorage() {
   };
   return { storage, files };
 }
-function mockDatabase(version = 1) {
+function mockDatabase(version = migrations.length) {
   let secureDelete = false;
   let foreignKeys = false;
   let wal = false;
@@ -47,7 +48,7 @@ function mockDatabase(version = 1) {
   };
   return { db, pragmas: () => ({ secureDelete, foreignKeys, wal }) };
 }
-function setup(version = 1) {
+function setup(version = migrations.length) {
   const { storage, files } = fileStorage();
   const database = mockDatabase(version);
   const adapters: RecordAdapters = { storage, openDatabase: jest.fn(async () => database.db) };
@@ -112,7 +113,7 @@ test('failed migration reports versions and closes the connection', async () => 
 
 test('newer schema executes no mutating SQL and deletes no files', async () => {
   const { adapters, db, storage, pragmas } = setup(42);
-  expect(await openRecord(adapters)).toEqual({ status: 'failed', failure: { code: 'newerSchema', found: 42, supported: 1 }, snapshotExists: true });
+  expect(await openRecord(adapters)).toEqual({ status: 'failed', failure: { code: 'newerSchema', found: 42, supported: migrations.length }, snapshotExists: true });
   expect(pragmas()).toEqual({ secureDelete: false, foreignKeys: false, wal: false });
   expect(db.exec).not.toHaveBeenCalled();
   expect(db.run).not.toHaveBeenCalled();
@@ -256,7 +257,7 @@ test('device preflight refuses a newer version in WAL without touching the origi
     const hashes = () => ['', '-wal', '-shm'].map((suffix) => createHash('sha256').update(readFileSync(path + suffix)).digest('hex'));
     const before = hashes();
     adapters.inspectVersion = () => inspectVersion(storage, adapters.openDatabase);
-    expect(await openRecord(adapters)).toMatchObject({ status: 'failed', failure: { code: 'newerSchema', found: 99, supported: 1 } });
+    expect(await openRecord(adapters)).toMatchObject({ status: 'failed', failure: { code: 'newerSchema', found: 99, supported: migrations.length } });
     expect(hashes()).toEqual(before);
     expect(jest.mocked(adapters.openDatabase).mock.calls.every(([, name]) => name === 'record.inspect.sqlite')).toBe(true);
     expect(existsSync(join(storage.root, 'record.inspect.sqlite'))).toBe(false);
