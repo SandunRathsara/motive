@@ -23,7 +23,7 @@ export SIMULATOR_UDID=3F737D26-4544-4954-9165-EB1DFEA8A8AA
 npx expo prebuild --platform ios --clean
 ```
 
-After prebuild, inspect `git diff -- package.json`: Expo rewrites the `ios`/`android` scripts. Undo only those automatic edits, preserving any other changes. `ios/` is ignored/generated.
+After prebuild, `git diff -- package.json` should be empty: the `ios`/`android` scripts already use `expo run:*`, so prebuild no longer rewrites them. `ios/` is ignored/generated.
 
 If the simulator is shut down, boot it first:
 
