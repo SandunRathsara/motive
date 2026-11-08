@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
-import type { RecordFailure } from '@/lib/persistence';
 import { deleteAllDisclosure } from '@/features/data';
 import type { RecoveryOutcome } from '../services/recovery';
-import type { RecordGate } from './useRecordGate';
+import type { RecordGate, RecoveryFailure } from './useRecordGate';
 
 export const erasePhrase = 'ERASE';
 export type RecoveryStep = 'actions' | 'restore' | 'share' | 'erase';
-export function recoveryCopy(failure: RecordFailure): { title: string; body: string } {
+export function recoveryCopy(failure: RecoveryFailure): { title: string; body: string } {
   switch (failure.code) {
+    case 'invalidRows': return { title: 'Your record needs attention', body: `Some setup data is incomplete or could not be read. ${failure.skippedCount} invalid row${failure.skippedCount === 1 ? '' : 's'} skipped. Nothing has been reset or deleted.` };
+    case 'readFailed': return { title: 'Your record couldn’t be checked', body: 'Try again. Your record has not been reset or deleted.' };
     case 'openFailed': return { title: 'Your record couldn’t open', body: 'Try again. Your record has not been reset or deleted.' };
     case 'integrityFailed': return { title: 'Your record needs attention', body: 'The record check did not pass. Nothing has been reset or deleted. You can keep a copy before choosing what to do.' };
     case 'migrationFailed': return { title: 'The record update couldn’t finish', body: `The update from version ${failure.from} to ${failure.to} did not finish. Your record has not been reset or deleted.` };

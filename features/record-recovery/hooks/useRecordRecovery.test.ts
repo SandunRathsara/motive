@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import type { RecordFailure } from '@/lib/persistence';
+import type { RecoveryFailure } from './useRecordGate';
 import { recoveryService } from '../services/recovery';
 import { useRecordGate } from './useRecordGate';
 import { useRecordRecovery } from './useRecordRecovery';
@@ -12,9 +12,10 @@ jest.mock('../services/recovery', () => ({ recoveryService: {
 } }));
 const service = jest.mocked(recoveryService);
 const initial = useRecordLifecycle.getState();
-const failures: RecordFailure[] = [
+const failures: RecoveryFailure[] = [
   { code: 'openFailed' }, { code: 'integrityFailed' }, { code: 'migrationFailed', from: 0, to: 1 },
   { code: 'newerSchema', found: 2, supported: 1 },
+  { code: 'invalidRows', skippedCount: 2 }, { code: 'invalidRows', skippedCount: 0 }, { code: 'readFailed' },
 ];
 beforeEach(() => {
   jest.resetAllMocks();
@@ -25,7 +26,7 @@ beforeEach(() => {
   service.restore.mockResolvedValue({ ok: true });
   service.share.mockResolvedValue({ ok: true });
 });
-async function setup(failure: RecordFailure = failures[0], snapshotExists = false) {
+async function setup(failure: RecoveryFailure = failures[0], snapshotExists = false) {
   service.open.mockResolvedValue({ status: 'failed', failure, snapshotExists });
   return renderHook(() => {
     const gate = useRecordGate();

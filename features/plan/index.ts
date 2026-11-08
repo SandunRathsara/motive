@@ -8,3 +8,4 @@ export { useCurrentPlan } from './hooks/useCurrentPlan';
 export { planExportSection } from './services/export-section';
 export type { TodayPlanViewModel } from './plan.view-models';
 export { useTodayPlan } from './hooks/useTodayPlan';
+export { planEraseParticipant } from './services/erase-participant';

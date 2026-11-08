@@ -11,10 +11,12 @@ import { useUncleanExitTracking } from '@/features/metrics';
 import { healthSignalTypes, signalTitles, useHealthSyncOnOpen } from '@/features/health';
 import { useEraseLifecycle } from '@/features/data';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
+import { useOnboardingGate } from '@/features/onboarding';
 
 export default function RootLayout() {
   const router = useRouter();
-  const gate = useRecordGate();
+  const record = useRecordGate();
+  const gate = useOnboardingGate(record);
   const recovery = useRecordRecovery(gate);
   const lifecycle = useEraseLifecycle();
   const generation = useRecordLifecycle((state) => state.eraseGeneration);
@@ -31,9 +33,9 @@ export default function RootLayout() {
     resetPending.current = false;
     resetGeneration.current = generation;
     // SDK 58: use href navigation, not removed resetRoot/partial-state reset APIs.
-    // Dismiss the old history first; replace also creates a fresh Today tab state.
-    router.dismissAll();
-    router.replace('/');
+    // Erasure clears old Settings/tab history before starting a fresh in-memory form.
+    if (router.canGoBack()) router.dismissAll();
+    router.replace('/onboarding');
   }, [gate.status, lifecycle.phase, generation, router]);
 
   let content;
@@ -43,6 +45,10 @@ export default function RootLayout() {
   } else if (gate.status === 'opening') content = null;
   else if (gate.status === 'recovery') content = <RecoveryTemplate model={recovery} />;
   else content = <Stack screenOptions={{ animation: 'none', headerTransparent: false }}>
+    <Stack.Protected guard={gate.onboardingStatus === 'none'} redirectTo="/">
+      <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
+    </Stack.Protected>
+    <Stack.Protected guard={gate.onboardingStatus === 'present'} redirectTo="/onboarding">
     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
     <Stack.Screen name="settings/target" options={{ title: 'Edit targets' }} />
@@ -54,6 +60,7 @@ export default function RootLayout() {
       const signal = healthSignalTypes.find((candidate) => candidate === type);
       return { title: signal ? signalTitles[signal] : 'Signal' };
     }} />
+    </Stack.Protected>
   </Stack>;
   return (
     <QueryClientProvider client={queryClient}>

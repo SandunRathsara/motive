@@ -1,12 +1,13 @@
 import * as SplashScreen from 'expo-splash-screen';
-import { openRecord, rawDatabaseUri, restoreSnapshot, type OpenRecordResult } from '@/lib/persistence';
+import { openRecord, rawDatabaseUri, restoreSnapshot, type OpenRecordResult, type RecordFailure } from '@/lib/persistence';
 import { logEvent } from '@/lib/logger';
 import { eraseAll, nativeShare, resumePendingErase, sweepExportStaging } from '@/features/data';
 
 // Hold before any React view hierarchy mounts; the root gate renders null while opening.
 void SplashScreen.preventAutoHideAsync().catch(() => logEvent('record_failure', { errorCode: 'splashFailed' }));
 export type RecoveryOutcome = { ok: true } | { ok: false; code: 'eraseFailed' | 'restoreFailed' | 'shareFailed' | 'sharingUnavailable' };
-export type RecoveryOpenResult = OpenRecordResult | { status: 'erase-blocked' };
+export type RecoveryFailure = RecordFailure | { code: 'invalidRows'; skippedCount: number } | { code: 'readFailed' };
+export type RecoveryOpenResult = Exclude<OpenRecordResult, { status: 'failed' }> | { status: 'failed'; failure: RecoveryFailure; snapshotExists: boolean } | { status: 'erase-blocked' };
 export const recoveryService = {
   async open(): Promise<RecoveryOpenResult> {
     try {

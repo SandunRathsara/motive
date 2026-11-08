@@ -11,6 +11,7 @@ export type { HealthSync, HealthSyncDependencies, HealthSyncResult, HealthTypeSy
 export { healthSignalsExportSection } from './services/export-section';
 export { healthEraseParticipant, setActiveHealthSync } from './services/erase-participant';
 export { getHealthSync, refreshOnOpenAttempted } from './services/health';
+export { readHealthSnapshot } from './services/health';
 export { useHealthSyncOnOpen } from './hooks/useHealthSyncOnOpen';
 export { useSignals } from './hooks/useSignals';
 export { useSignalDetail } from './hooks/useSignalDetail';

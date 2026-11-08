@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { RecordFailure } from '@/lib/persistence';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
-import { recoveryService, type RecoveryOpenResult } from '../services/recovery';
+import { recoveryService, type RecoveryOpenResult, type RecoveryFailure } from '../services/recovery';
+export type { RecoveryFailure } from '../services/recovery';
 
-export type RecordGateStatus = { status: 'opening' } | { status: 'ready' } |
-  { status: 'recovery'; failure: RecordFailure; snapshotExists: boolean };
+export type RecordGateStatus = { status: 'opening' } | { status: 'ready'; snapshotExists: boolean } |
+  { status: 'recovery'; failure: RecoveryFailure; snapshotExists: boolean };
 function gateStatus(result: RecoveryOpenResult): RecordGateStatus {
   // The root must render its lifecycle blocker before the normal opening/null branch.
   if (result.status === 'erase-blocked') return { status: 'opening' };
-  return result.status === 'ready' ? { status: 'ready' } : {
+  return result.status === 'ready' ? { status: 'ready', snapshotExists: result.snapshotExists } : {
     status: 'recovery', failure: result.failure, snapshotExists: result.snapshotExists,
   };
 }
