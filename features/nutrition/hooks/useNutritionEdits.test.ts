@@ -3,13 +3,13 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { planStore, planKeys, createPlanRepository, type PlanVersion } from '@/features/plan';
 import { createProfileRepository, profileKeys } from '@/features/profile';
-import { getTrendWeight, getDailyWeights } from '@/features/health';
+import { getTrendWeight, getLatestKnownTrendWeight } from '@/features/health';
 import { useEditGoal, useEditKcalTarget, useEditProteinFloor } from './useNutritionEdits';
 import { useNutritionTargetEditor } from './useNutritionTargetEditor';
 
 jest.mock('@/features/plan', () => ({ ...jest.requireActual('@/features/plan'), createPlanRepository: jest.fn() }));
 jest.mock('@/features/profile', () => ({ ...jest.requireActual('@/features/profile'), createProfileRepository: jest.fn() }));
-jest.mock('@/features/health', () => ({ getTrendWeight: jest.fn(), getDailyWeights: jest.fn() }));
+jest.mock('@/features/health', () => ({ getTrendWeight: jest.fn(), getLatestKnownTrendWeight: jest.fn() }));
 const version = { number: 1, snapshot: { goal: 'fatLoss', ratePreset: -0.5, kcalTarget: 2250, kcalOrigin: 'startingEstimate', proteinFloorG: 144, proteinBasisWeightKg: 80 } } as PlanVersion;
 const clients: QueryClient[] = [];
 async function setup<T>(hook: () => T) {
@@ -27,7 +27,7 @@ beforeEach(() => {
   jest.mocked(createProfileRepository).mockReturnValue({ read: async () => ({ profile: { sex: 'male', age: 30, heightCm: 180, weightKg: 80 }, skippedCount: 0 }) } as ReturnType<typeof createProfileRepository>);
   jest.mocked(createPlanRepository).mockReturnValue({ readStartingEstimate: async () => ({ estimate: { valueKcal: 2670 }, skippedCount: 0 }) } as ReturnType<typeof createPlanRepository>);
   jest.mocked(getTrendWeight).mockResolvedValue({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
-  jest.mocked(getDailyWeights).mockResolvedValue({ days: [], coverage: { known: 0, of: 90, unit: 'days' } });
+  jest.mocked(getLatestKnownTrendWeight).mockResolvedValue({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
 });
 afterEach(() => { clients.splice(0).forEach((client) => client.clear()); jest.restoreAllMocks(); jest.clearAllMocks(); });
 

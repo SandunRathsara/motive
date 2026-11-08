@@ -1,6 +1,6 @@
 import { createPlanRepository, createPlanStore, type PlanState } from '@/features/plan';
 import { createProfileRepository } from '@/features/profile';
-import { getDailyWeights, getTrendWeight } from '@/features/health';
+import { getLatestKnownTrendWeight, getTrendWeight } from '@/features/health';
 import { starterTrainingProgram } from '@/features/workouts';
 import { migrateRecord } from '@/lib/persistence/runner';
 import { nodeExecutor } from '@/lib/persistence/testing/node-executor';
@@ -8,7 +8,7 @@ import type { SqlExecutor } from '@/lib/persistence';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
 import { createNutritionEdits } from './nutrition-edits';
 
-jest.mock('@/features/health', () => ({ getTrendWeight: jest.fn(), getDailyWeights: jest.fn() }));
+jest.mock('@/features/health', () => ({ getTrendWeight: jest.fn(), getLatestKnownTrendWeight: jest.fn() }));
 const now = new Date(2026, 10, 8, 12).getTime();
 const profile = { sex: 'male', age: 30, heightCm: 180, activityLevel: 1.5, weightKg: 80, weightOrigin: { kind: 'typed' }, createdAt: now } as const;
 const initial: PlanState = {
@@ -24,7 +24,7 @@ beforeEach(async () => {
   await createPlanRepository(db).insertStartingEstimate({ valueKcal: 2670, createdAt: now });
   await createPlanRepository(db).insertInitial(initial, now);
   jest.mocked(getTrendWeight).mockResolvedValue({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
-  jest.mocked(getDailyWeights).mockResolvedValue({ days: [], coverage: { known: 0, of: 90, unit: 'days' } });
+  jest.mocked(getLatestKnownTrendWeight).mockResolvedValue({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
 });
 afterEach(async () => { await db.close(); jest.resetAllMocks(); useRecordLifecycle.setState({ phase: 'ready' }); });
 
@@ -71,23 +71,14 @@ test('unchanged re-saves append nothing, do not relabel kcal or reset protein ba
 });
 
 test('unknown current Trend Weight uses the most recent known historical Trend Weight, not a raw daily average', async () => {
-  jest.mocked(getDailyWeights).mockResolvedValue({ days: [
-    { day: '2026-10-25', known: true, value: 90, provenance: [], coverage: { known: 1, of: 1, unit: 'days' } },
-  ], coverage: { known: 1, of: 90, unit: 'days' } });
-  jest.mocked(getTrendWeight).mockImplementation(async (day) => day === '2026-10-31'
-    ? { known: true, value: 90, provenance: [], coverage: { known: 1, of: 7, unit: 'days' } }
-    : { known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
+  jest.mocked(getLatestKnownTrendWeight).mockResolvedValue({ known: true, value: 90, provenance: [], coverage: { known: 1, of: 7, unit: 'days' } });
   await expect(createNutritionEdits({ connection: db, now: () => now }).editKcalTarget(1879))
     .rejects.toMatchObject({ code: 'belowFloor', floor: { kcal: 1880, reason: 'bmr' } });
 });
 
-test.each(['current', 'history', 'historicalTrend'])('Health read failure (%s) falls back to Profile weight without blocking an edit', async (failure) => {
+test.each(['current', 'historicalTrend'])('Health read failure (%s) falls back to Profile weight without blocking an edit', async (failure) => {
   if (failure === 'current') jest.mocked(getTrendWeight).mockRejectedValue(new Error('Health read failed'));
-  if (failure === 'history') jest.mocked(getDailyWeights).mockRejectedValue(new Error('Health read failed'));
-  if (failure === 'historicalTrend') {
-    jest.mocked(getDailyWeights).mockResolvedValue({ days: [{ day: '2026-10-25', known: true, value: 90, provenance: [], coverage: { known: 1, of: 1, unit: 'days' } }], coverage: { known: 1, of: 90, unit: 'days' } });
-    jest.mocked(getTrendWeight).mockResolvedValueOnce({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } }).mockRejectedValueOnce(new Error('Health read failed'));
-  }
+  if (failure === 'historicalTrend') jest.mocked(getLatestKnownTrendWeight).mockRejectedValue(new Error('Health read failed'));
   const result = await createNutritionEdits({ connection: db, now: () => now }).editProteinFloor(160);
   expect(result.version?.snapshot).toMatchObject({ proteinFloorG: 160, proteinBasisWeightKg: 80 });
 });

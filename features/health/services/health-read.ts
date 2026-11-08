@@ -1,5 +1,5 @@
 import type { HealthSample, SignalValue, Coverage, HealthReadError, HealthSignalType } from '../health.types';
-import { coachingHealthAggregates, dailyWeights, evidenceHealthAggregates, healthDayKey, trendWeight, type SignalDayRange, type SignalRulesContext } from '../health.utils';
+import { coachingHealthAggregates, dailyWeights, evidenceHealthAggregates, healthDayKey, latestKnownTrendWeight, trendWeight, type SignalDayRange, type SignalRulesContext } from '../health.utils';
 import { createHealthRepository } from './health-repository';
 
 export const healthReadFailure = (): HealthReadError => Object.assign(new Error("Couldn't read cached Health Signals. Try again."), { kind: 'readFailed' as const });
@@ -18,6 +18,10 @@ export async function getDailyWeights(range: SignalDayRange, context: SignalRule
 export async function getTrendWeight(day: string, context: SignalRulesContext = { now: Date.now() }) {
   const rows = await readHealthSamples('bodyMass');
   return trendWeight(rows, day, context);
+}
+
+export async function getLatestKnownTrendWeight(context: SignalRulesContext = { now: Date.now() }) {
+  return latestKnownTrendWeight(await readHealthSamples('bodyMass'), context);
 }
 
 export type HealthWorkout = HealthSample & { type: 'workout' };

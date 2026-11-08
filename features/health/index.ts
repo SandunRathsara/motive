@@ -1,7 +1,7 @@
 export { healthSignalTypes } from './health.types';
 export type { HealthSignalType, HealthSample, SignalAvailability, HealthSyncError, SignalValue, SignalProvenance, Coverage, UnknownReason } from './health.types';
 export type { HealthSampleDto } from './health.schemas';
-export { getDailyWeights, getTrendWeight, getHealthWorkouts, getHealthCoachingContext, getHealthEvidenceContext } from './services/health-read';
+export { getDailyWeights, getTrendWeight, getLatestKnownTrendWeight, getHealthWorkouts, getHealthCoachingContext, getHealthEvidenceContext } from './services/health-read';
 export type { HealthContextValue, HealthContextComparison, HealthCoachingContext, HealthEvidenceContext } from './health.types';
 export type { HealthReadError } from './health.types';
 export type { HealthWorkout, HealthWorkoutRange } from './services/health-read';
@@ -10,8 +10,7 @@ export { createHealthSync } from './services/health-sync';
 export type { HealthSync, HealthSyncDependencies, HealthSyncResult, HealthTypeSyncResult, HealthDeleteHistoryResult } from './services/health-sync';
 export { healthSignalsExportSection } from './services/export-section';
 export { healthEraseParticipant, setActiveHealthSync } from './services/erase-participant';
-export { getHealthSync, refreshOnOpenAttempted } from './services/health';
-export { readHealthSnapshot } from './services/health';
+export { getHealthSync, refreshOnOpenAttempted, isHealthAvailableForPrefill, requestWeightForPrefill } from './services/health';
 export { useHealthSyncOnOpen } from './hooks/useHealthSyncOnOpen';
 export { useSignals } from './hooks/useSignals';
 export { useSignalDetail } from './hooks/useSignalDetail';

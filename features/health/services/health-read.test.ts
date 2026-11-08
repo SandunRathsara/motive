@@ -2,7 +2,7 @@ import { requireRecord, type SqlExecutor } from '@/lib/persistence';
 import { migrateRecord } from '@/lib/persistence/runner';
 import { nodeExecutor } from '@/lib/persistence/testing/node-executor';
 import { useRecordLifecycle } from '@/store/record-lifecycle';
-import { getDailyWeights, getTrendWeight, getHealthWorkouts, getHealthCoachingContext, getHealthEvidenceContext } from '../index';
+import { getDailyWeights, getTrendWeight, getLatestKnownTrendWeight, getHealthWorkouts, getHealthCoachingContext, getHealthEvidenceContext } from '../index';
 import { FakeHealthKitAdapter } from './fake-healthkit';
 import { createHealthSync } from './health-sync';
 
@@ -76,6 +76,7 @@ test('public daily weights keep selected stable sample IDs and gaps', async () =
 });
 
 test('public Trend Weight stays unknown without weigh-ins and supports a requested historical day', async () => {
+  expect(await getLatestKnownTrendWeight(context)).toEqual({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
   expect(await getTrendWeight('2026-11-02', context)).toEqual({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
   adapter.addSample({ uuid: '00000000-0000-4000-8000-000000000001', type: 'bodyMass', value: 81, unit: 'kg',
     startMs: Date.parse('2026-11-01T06:00:00Z'), endMs: Date.parse('2026-11-01T06:00:00Z'), source: { bundleId: 'scale', name: 'Scale' },
@@ -83,4 +84,5 @@ test('public Trend Weight stays unknown without weigh-ins and supports a request
   await createHealthSync({ adapter, connection: db, now: () => now }).sync('open');
   expect(await getTrendWeight('2026-11-02', context)).toMatchObject({ known: true, value: 81, coverage: { known: 1, of: 7, unit: 'days' } });
   expect(await getTrendWeight('2026-11-08', context)).toMatchObject({ known: false, reason: 'noSamples', coverage: { known: 0, of: 7, unit: 'days' } });
+  expect(await getLatestKnownTrendWeight(context)).toMatchObject({ known: true, value: 81, coverage: { known: 1, of: 7, unit: 'days' } });
 });

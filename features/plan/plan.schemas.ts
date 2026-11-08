@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { storedJsonSchema } from '@/lib/contracts/stored-json';
 import { trainingProgramSchema } from '@/lib/contracts/training-program';
+import { goalOptions, goalRatePresets } from '@/lib/contracts/nutrition-inputs';
 
 const fields = {
-  goal: z.enum(['fatLoss', 'maintenance', 'muscleGain']),
-  ratePreset: z.union([z.literal(-0.25), z.literal(-0.5), z.literal(-0.75), z.null(), z.literal(0.1), z.literal(0.25), z.literal(0.4)]),
+  goal: z.enum(goalOptions.map((option) => option.value)),
+  ratePreset: z.union([z.literal([...goalRatePresets.fatLoss, ...goalRatePresets.muscleGain]), z.null()]),
   kcalTarget: z.number().int().positive(), kcalOrigin: z.enum(['startingEstimate', 'yourEdit', 'planChange']),
   proteinFloorG: z.number().int().positive(), proteinBasisWeightKg: z.number().positive(),
   weeklySessionTarget: z.number().int().min(1).max(6), trainingProgram: trainingProgramSchema,
@@ -13,7 +14,7 @@ export const planFieldSchema = z.enum(['goal', 'ratePreset', 'kcalTarget', 'kcal
 export type PlanField = z.infer<typeof planFieldSchema>;
 export const planStateSchema = z.object(fields).strict().refine((state) =>
   state.goal === 'maintenance' ? state.ratePreset === null : state.ratePreset !== null &&
-    (state.goal === 'fatLoss' ? [-0.25, -0.5, -0.75] : [0.1, 0.25, 0.4]).includes(state.ratePreset),
+    goalRatePresets[state.goal].some((rate) => rate === state.ratePreset),
 { message: 'Rate preset must match Goal', path: ['ratePreset'] });
 export type PlanState = z.infer<typeof planStateSchema>;
 export const planChangesSchema = z.object(fields).partial().strict();

@@ -164,6 +164,14 @@ export function trendWeight(samples: readonly HealthSample[], day: string, conte
   return aggregate(dailyWeights(samples, { startDay: shiftDay(day, -6), endDay: day }, context));
 }
 
+/** The last weigh-in contributes through day +6; retained history has no expiry. */
+export function latestKnownTrendWeight(samples: readonly HealthSample[], context: SignalRulesContext): CoveredSignalValue {
+  const latestDay = [...earliestWeightsByDay(samples, context).keys()].sort().pop();
+  const today = healthDayKey(context.now, context);
+  const lastKnownDay = latestDay ? shiftDay(latestDay, 6) : today;
+  return trendWeight(samples, lastKnownDay < today ? lastKnownDay : today, context);
+}
+
 function sleepClass(sample: SleepSample, inBedOnly: boolean): SleepSourceClass {
   if (sample.userEntered) return 'userEntered';
   if (inBedOnly) return 'iPhoneOrInBedOnly';

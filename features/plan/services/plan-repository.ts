@@ -1,5 +1,6 @@
 import { parseRows, requireRecord, type SqlConnection } from '@/lib/persistence';
 import { recordWritesAllowed } from '@/store/record-lifecycle';
+import { z } from 'zod';
 import { planFieldSchema, planStateSchema, planVersionSchema, planVersionRowSchema, startingEstimateSchema, startingEstimateRowSchema, type PlanState, type PlanVersion, type PlanDiff, type StartingEstimate } from '../plan.schemas';
 
 export class PlanStoreError extends Error {
@@ -17,6 +18,7 @@ export function planDiff(previous: PlanState | null, next: PlanState): PlanDiff 
   }
   return diff;
 }
+const exerciseIdRowSchema = z.object({ id: z.string().min(1) }).strict();
 export function createPlanRepository(connection?: SqlConnection) {
   const db = () => connection ?? requireRecord();
   const repository = {
@@ -43,7 +45,9 @@ export function createPlanRepository(connection?: SqlConnection) {
       if (!parsed.success) throw new PlanStoreError('invalidState');
       const version = parsed.data;
       try {
-        const ids = new Set((await db().getAll<{ id: string }>('SELECT id FROM exercise_library')).map((row) => row.id));
+        const references = parseRows(exerciseIdRowSchema, await db().getAll('SELECT id FROM exercise_library'));
+        if (references.skippedCount) throw new PlanStoreError('invalidRows', references.skippedCount);
+        const ids = new Set(references.rows.map((row) => row.id));
         if (version.snapshot.trainingProgram.rotation.some((template) => template.exercises.some((exercise) => !ids.has(exercise.exerciseId)))) throw new PlanStoreError('invalidState');
         assertPlanWritesAllowed();
         await db().run('INSERT INTO plan_version VALUES (?, ?, ?, ?, ?, ?)', [version.number, version.createdAt, version.source, version.sourceRef, JSON.stringify(version.snapshot), JSON.stringify(version.diff)]);

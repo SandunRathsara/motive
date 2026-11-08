@@ -60,11 +60,17 @@ Earlier callers keep their original snapshot; later opens do not extend it.
 Before any open has been triggered it resolves immediately, rather than waiting
 forever for an attempt that may never start. This barrier never gates rendering.
 
-Other slices use only these read-only exports from `features/health`:
+Other slices use only the following cross-slice surface from `features/health`.
+Cached reads are read-only:
 
 - `getDailyWeights(range, context?)`: inclusive 04:00-local days, known/unknown
   values and coverage, with stable selected sample IDs in provenance.
 - `getTrendWeight(day, context?)`: seven-day Trend Weight for any signal day.
+- `getLatestKnownTrendWeight(context?)`: latest known seven-day Trend Weight
+  across all retained, validated cached body-mass history (through today, never
+  future samples). The last weigh-in contributes through its signal day +6;
+  this is not the trend on the last weigh-in day. No sync, authorization, native
+  calls or writes. Unknown only when no cached weigh-in is known.
 - `getHealthWorkouts({ from, to }, context?)`: inclusive interval overlap, stable
   local IDs, known/unknown and day coverage. No workout linking in this slice.
 - `getHealthCoachingContext(context?)`: exactly 28 daily aggregate rows, with
@@ -78,3 +84,16 @@ Contexts default to `Date.now()` and the device time zone at read time; injected
 contexts support deterministic tests and historical evidence. Failed record reads
 reject with a safe typed `HealthReadError` (`kind: 'readFailed'`), never a fabricated
 unknown/zero or a native/storage error message.
+
+Onboarding's explicit **Use Apple Health** opt-in uses these health-owned operations:
+
+- `isHealthAvailableForPrefill()`: availability probe only, never authorization or sync.
+- `requestWeightForPrefill()`: call only after opt-in. Health validates body-mass
+  availability internally, connects only for `notRequested` (including no stored
+  request yet), refreshes an already `requested` type without re-requesting
+  authorization, and returns today's known/unknown Trend Weight with provenance
+  (or null when unavailable). Invalid stored availability refuses the operation;
+  failures reject with the safe `HealthReadError`. Only native sample ingestion
+  populates the cache: this operation never manufactures a weight sample from a
+  Profile input. Onboarding owns its bounded wait and ignores late results after
+  typing or leaving. It does not use the sync singleton or private read snapshot.

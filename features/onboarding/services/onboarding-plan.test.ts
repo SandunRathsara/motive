@@ -1,4 +1,4 @@
-import type { SqlExecutor } from '@/lib/persistence';
+import { requireRecord, type SqlExecutor } from '@/lib/persistence';
 import { migrateRecord } from '@/lib/persistence/runner';
 import { nodeExecutor } from '@/lib/persistence/testing/node-executor';
 import { completeOnboarding, readOnboardingStatus } from '@/features/onboarding';
@@ -6,6 +6,9 @@ import { useRecordLifecycle } from '@/store/record-lifecycle';
 import { createPlanStore, createPlanRepository, planStore } from '@/features/plan';
 import { createProfileRepository } from '@/features/profile';
 import { healthSignalsExportSection } from '@/features/health';
+import { createNutritionEdits } from '@/features/nutrition';
+
+jest.mock('@/lib/persistence', () => ({ ...jest.requireActual('@/lib/persistence'), requireRecord: jest.fn() }));
 
 const now = Date.parse('2026-11-08T12:00:00Z');
 const inputs = {
@@ -15,10 +18,26 @@ const inputs = {
 let db: SqlExecutor;
 beforeEach(async () => {
   db = nodeExecutor();
+  jest.mocked(requireRecord).mockReturnValue(db);
   expect(await migrateRecord(db, async () => {})).toBeNull();
   useRecordLifecycle.setState({ phase: 'ready' });
 });
 afterEach(async () => { planStore.clearChangeListeners(); await db.close(); useRecordLifecycle.setState({ phase: 'ready' }); jest.restoreAllMocks(); });
+
+test('a latest known Trend Weight 100 days ago still refuses manual kcal below its floor', async () => {
+  await completeOnboarding({ ...inputs, age: 35 }, { connection: db, now: () => now });
+  // The last weigh-in contributes through day +6: the latest known trend is 100 days old.
+  for (const [index, daysAgo, value] of [[1, 107, 80], [2, 106, 120]] as const) {
+    const at = now - daysAgo * 86_400_000;
+    const id = `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
+    await db.run(`INSERT INTO health_sample (id, hk_uuid, type, start_ms, end_ms, value, unit,
+      source_bundle_id, source_name, device_present, user_entered) VALUES (?, ?, 'bodyMass', ?, ?, ?, 'kg', 'scale', 'Scale', 0, 0)`,
+    [id, id, at, at, value]);
+  }
+  await expect(createNutritionEdits({ connection: db, now: () => now }).editKcalTarget(1800))
+    .rejects.toMatchObject({ code: 'belowFloor', floor: { kcal: 2155, reason: 'bmr' } });
+  expect((await createPlanStore({ connection: db }).list()).rows).toHaveLength(1);
+});
 
 test('onboarding commits a starting plan; edits append numbered full snapshots and from-to diffs', async () => {
   const result = await completeOnboarding(inputs, { connection: db, now: () => now });
@@ -103,6 +122,16 @@ test('invalid resulting state is refused without consuming a number', async () =
   const badProgram = { rotation: [{ ...program.rotation[0], exercises: [{ ...program.rotation[0].exercises[0], exerciseId: 'missing' }] }] };
   await expect(store.appendVersion('Your edit', { trainingProgram: badProgram })).rejects.toMatchObject({ code: 'invalidState' });
   expect((await store.appendVersion('Your edit', { weeklySessionTarget: 4 })).version?.number).toBe(2);
+});
+
+test('invalid stored exercise IDs refuse plan writes with a counted error', async () => {
+  jest.spyOn(console, 'info').mockImplementation(() => {});
+  await completeOnboarding(inputs, { connection: db, now: () => now });
+  await db.run("INSERT INTO exercise_library VALUES ('', 'Corrupt ID', 'chest', 'barbell', 0, 1)");
+  const store = createPlanStore({ connection: db });
+  await expect(store.appendVersion('Your edit', { weeklySessionTarget: 4 }))
+    .rejects.toMatchObject({ code: 'invalidRows', skippedCount: 1 });
+  expect((await store.list()).rows).toHaveLength(1);
 });
 
 test('invalid rows are counted, retained, and never mistaken for no plan', async () => {

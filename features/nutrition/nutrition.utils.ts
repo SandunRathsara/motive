@@ -13,25 +13,30 @@ export function calculateDailyEnergyOffset(referenceWeightKg: number, selection:
   return selection.ratePreset === null ? 0 : selection.ratePreset / 100 * referenceWeightKg * 7700 / 7;
 }
 
+/** Round first, then clamp to a whole kcal at/above the exact NUT-8 floor. */
+export function clampCalorieTarget(requestedKcal: number, floor: CalorieFloor, selection: GoalSelection) {
+  const roundedKcal = Math.round(requestedKcal / 50) * 50;
+  const clamped = roundedKcal < floor.kcal;
+  return {
+    kcalTarget: Math.max(roundedKcal, Math.ceil(floor.kcal)),
+    clamped,
+    suggestedSlowerPreset: clamped && selection.goal === 'fatLoss'
+      ? [...goalRatePresets.fatLoss].reverse().find((rate) => rate > selection.ratePreset) ?? null
+      : null,
+  };
+}
+
 export function calculateStartingPlan(input: StartingPlanInput): StartingPlan {
   const floor = calculateCalorieFloor(input, input.weightKg);
   const { bmrKcal } = floor;
   const expenditureEstimateKcal = bmrKcal * input.activityLevel;
   const offsetKcal = calculateDailyEnergyOffset(input.weightKg, input);
-  const requestedKcal = expenditureEstimateKcal + offsetKcal;
-  const roundedKcal = Math.round(requestedKcal / 50) * 50;
-  const clamped = roundedKcal < floor.kcal;
   return {
     bmrKcal,
     expenditureEstimateKcal,
     offsetKcal,
     floor,
-    // ONB-2 rounds first; NUT-8 then clamps to the floor (whole kcal, never below), even between 50-kcal steps.
-    kcalTarget: Math.max(roundedKcal, Math.ceil(floor.kcal)),
-    clamped,
-    suggestedSlowerPreset: clamped && input.goal === 'fatLoss'
-      ? [...goalRatePresets.fatLoss].reverse().find((rate) => rate > input.ratePreset) ?? null
-      : null,
+    ...clampCalorieTarget(expenditureEstimateKcal + offsetKcal, floor, input),
     proteinFloorG: Math.round(input.weightKg * (input.goal === 'fatLoss' ? 1.8 : 1.6)),
     fatMinimumG: input.weightKg * 0.6,
   };

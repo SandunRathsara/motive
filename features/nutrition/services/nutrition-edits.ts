@@ -1,18 +1,17 @@
 import { createPlanRepository, createPlanStore, planStore, type PlanAppendResult, type PlanState } from '@/features/plan';
 import { createProfileRepository } from '@/features/profile';
-import { getDailyWeights, getTrendWeight } from '@/features/health';
+import { getLatestKnownTrendWeight, getTrendWeight } from '@/features/health';
 import type { SqlExecutor } from '@/lib/persistence';
 import { dayKey } from '@/lib/utils/time';
 import { z } from 'zod';
 import { goalSelectionSchema } from '../nutrition.schemas';
-import { calculateCalorieFloor, calculateDailyEnergyOffset } from '../nutrition.utils';
-import { goalRatePresets, type CalorieFloor, type GoalSelection } from '../nutrition.types';
+import { calculateCalorieFloor, calculateDailyEnergyOffset, clampCalorieTarget } from '../nutrition.utils';
+import type { CalorieFloor, GoalSelection } from '../nutrition.types';
 
 export class NutritionEditError extends Error {
   constructor(readonly code: 'invalidInput' | 'invalidRecord' | 'belowFloor', readonly floor?: CalorieFloor) { super(code); this.name = 'NutritionEditError'; }
 }
 const positiveInteger = z.number().int().positive();
-const shiftDay = (day: string, count: number) => new Date(Date.parse(`${day}T12:00:00Z`) + count * 86_400_000).toISOString().slice(0, 10);
 export type GoalEditResult = PlanAppendResult & { clamped: boolean; floor?: CalorieFloor; suggestedSlowerPreset: GoalSelection['ratePreset'] };
 
 export function createNutritionEdits(options: { connection?: SqlExecutor; now?: () => number } = {}) {
@@ -23,13 +22,7 @@ export function createNutritionEdits(options: { connection?: SqlExecutor; now?: 
       const today = dayKey(now);
       const trend = await getTrendWeight(today, { now });
       if (trend.known) return trend.value;
-      // Bounded to the same 90 days as the first Health sync; never starts sync or asks for permission.
-      const weights = await getDailyWeights({ startDay: shiftDay(today, -89), endDay: today }, { now });
-      const latest = weights.days.filter((day) => day.known).sort((a, b) => b.day.localeCompare(a.day))[0];
-      if (!latest) return profileWeightKg;
-      // A weigh-in contributes through day +6. Ask Health for that last known trend, not the raw weigh-in.
-      const lastKnownDay = shiftDay(latest.day, 6);
-      const historical = await getTrendWeight(lastKnownDay < today ? lastKnownDay : today, { now });
+      const historical = await getLatestKnownTrendWeight({ now });
       return historical.known ? historical.value : profileWeightKg;
     } catch { return profileWeightKg; }
   }
@@ -55,14 +48,11 @@ export function createNutritionEdits(options: { connection?: SqlExecutor; now?: 
       const estimates = await createPlanRepository(options.connection).readStartingEstimate();
       if (!estimates.estimate || estimates.skippedCount) throw new NutritionEditError('invalidRecord');
       const floor = calculateCalorieFloor(profile, weightKg);
-      const rounded = Math.round((estimates.estimate.valueKcal + calculateDailyEnergyOffset(weightKg, parsed.data)) / 50) * 50;
-      const clamped = rounded < floor.kcal;
+      const { kcalTarget, ...notice } = clampCalorieTarget(estimates.estimate.valueKcal + calculateDailyEnergyOffset(weightKg, parsed.data), floor, parsed.data);
       const result = await store.appendVersion('Your edit', {
-        ...parsed.data, kcalTarget: Math.max(rounded, Math.ceil(floor.kcal)),
+        ...parsed.data, kcalTarget,
       });
-      const ratePreset = parsed.data.ratePreset;
-      return { ...result, floor, clamped, suggestedSlowerPreset: clamped && parsed.data.goal === 'fatLoss' && ratePreset !== null
-        ? [...goalRatePresets.fatLoss].reverse().find((rate) => rate > ratePreset) ?? null : null };
+      return { ...result, floor, ...notice };
     },
     async editKcalTarget(kcalTarget: number) {
       if (!positiveInteger.safeParse(kcalTarget).success) throw new NutritionEditError('invalidInput');
