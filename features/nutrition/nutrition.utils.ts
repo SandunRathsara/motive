@@ -20,14 +20,14 @@ export function calculateStartingPlan(input: StartingPlanInput): StartingPlan {
   const offsetKcal = calculateDailyEnergyOffset(input.weightKg, input);
   const requestedKcal = expenditureEstimateKcal + offsetKcal;
   const roundedKcal = Math.round(requestedKcal / 50) * 50;
-  const clamped = requestedKcal < floor.kcal || roundedKcal < floor.kcal;
+  const clamped = roundedKcal < floor.kcal;
   return {
     bmrKcal,
     expenditureEstimateKcal,
     offsetKcal,
     floor,
-    // Keep intermediate kcal exact; a 50-kcal target must never round below the exact floor.
-    kcalTarget: Math.max(roundedKcal, Math.ceil(floor.kcal / 50) * 50),
+    // ONB-2 rounds first; NUT-8 then applies the exact floor, even between 50-kcal steps.
+    kcalTarget: Math.max(roundedKcal, floor.kcal),
     clamped,
     suggestedSlowerPreset: clamped && input.goal === 'fatLoss'
       ? [...goalRatePresets.fatLoss].reverse().find((rate) => rate > input.ratePreset) ?? null

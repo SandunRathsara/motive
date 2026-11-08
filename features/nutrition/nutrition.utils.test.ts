@@ -27,14 +27,29 @@ test('Fat Loss applies the percentage-per-week deficit and its higher protein fl
   })).toMatchObject({ offsetKcal: -440, kcalTarget: 2200, proteinFloorG: 144, fatMinimumG: 48 });
 });
 
-test('a BMR-limited start clamps safely to a 50-kcal step and suggests the next slower listed preset', () => {
+test('a BMR-limited start applies the exact floor after rounding and suggests the next slower listed preset', () => {
   // 2281.5 − 660 = 1621.5 is below BMR 1755; 1750 would still be below it.
   expect(calculateStartingPlan({
     sex: 'male', age: 35, heightCm: 180, activityLevel: 1.3,
     weightKg: 80, goal: 'fatLoss', ratePreset: -0.75,
   })).toMatchObject({
-    floor: { kcal: 1755, reason: 'bmr' }, kcalTarget: 1800,
+    floor: { kcal: 1755, reason: 'bmr' }, kcalTarget: 1755,
     clamped: true, suggestedSlowerPreset: -0.5,
+  });
+});
+
+test.each([
+  { sex: 'male' as const, weightKg: 118, floorKcal: 2135, kcalTarget: 2150, clamped: false, suggestedSlowerPreset: null },
+  { sex: 'female' as const, weightKg: 92, floorKcal: 1709, kcalTarget: 1709, clamped: true, suggestedSlowerPreset: -0.25 },
+])('the $sex floor check follows target rounding, not the unrounded request', (fixture) => {
+  // Male: request 2126.5 → 2150, above floor 2135. Female: 1715.7 → 1700, below floor 1709.
+  const result = calculateStartingPlan({
+    sex: fixture.sex, age: 35, heightCm: 180, activityLevel: 1.3,
+    weightKg: fixture.weightKg, goal: 'fatLoss', ratePreset: -0.5,
+  });
+  expect(result).toMatchObject({
+    floor: { kcal: fixture.floorKcal }, kcalTarget: fixture.kcalTarget,
+    clamped: fixture.clamped, suggestedSlowerPreset: fixture.suggestedSlowerPreset,
   });
 });
 
@@ -49,10 +64,10 @@ const selections: (GoalSelection & { offsetKcal: number; proteinFloorG: number }
   { goal: 'muscleGain', ratePreset: 0.4, offsetKcal: 352, proteinFloorG: 128 },
 ];
 const fixtures: { sex: Sex; activityLevel: ActivityLevel; bmrKcal: number; expenditureEstimateKcal: number; targets: number[] }[] = [
-  { sex: 'male', activityLevel: 1.3, bmrKcal: 1755, expenditureEstimateKcal: 2281.5, targets: [2050, 1850, 1800, 2300, 2350, 2500, 2650] },
+  { sex: 'male', activityLevel: 1.3, bmrKcal: 1755, expenditureEstimateKcal: 2281.5, targets: [2050, 1850, 1755, 2300, 2350, 2500, 2650] },
   { sex: 'male', activityLevel: 1.5, bmrKcal: 1755, expenditureEstimateKcal: 2632.5, targets: [2400, 2200, 1950, 2650, 2700, 2850, 3000] },
   { sex: 'male', activityLevel: 1.7, bmrKcal: 1755, expenditureEstimateKcal: 2983.5, targets: [2750, 2550, 2300, 3000, 3050, 3200, 3350] },
-  { sex: 'female', activityLevel: 1.3, bmrKcal: 1589, expenditureEstimateKcal: 2065.7, targets: [1850, 1650, 1600, 2050, 2150, 2300, 2400] },
+  { sex: 'female', activityLevel: 1.3, bmrKcal: 1589, expenditureEstimateKcal: 2065.7, targets: [1850, 1650, 1589, 2050, 2150, 2300, 2400] },
   { sex: 'female', activityLevel: 1.5, bmrKcal: 1589, expenditureEstimateKcal: 2383.5, targets: [2150, 1950, 1700, 2400, 2450, 2600, 2750] },
   { sex: 'female', activityLevel: 1.7, bmrKcal: 1589, expenditureEstimateKcal: 2701.3, targets: [2500, 2250, 2050, 2700, 2800, 2900, 3050] },
 ];
