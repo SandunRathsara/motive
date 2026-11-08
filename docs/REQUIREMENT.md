@@ -290,6 +290,7 @@ _Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/moti
   - No write types are requested and there is no `NSHealthUpdateUsageDescription`.
   - A type is added only when a Phase 1 rule consumes it, through a new decision record.
 - **SIG-2** **Sync:** foreground only, on app open and pull-to-refresh, with no background delivery.
+  - Health access is requested from **Connect Apple Health** on S10, shown while the state is `notRequested`. Slice 4 may add an onboarding step.
   - The first sync backfills 90 days for all five types. After that, anchored queries fetch only changes, and deletions remove the cached copy.
   - Normalized samples are cached in the Personal Health Record, so evidence cites stable local sample IDs.
 - **SIG-3** **Known or unknown, never zero:**
@@ -300,18 +301,21 @@ _Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/moti
 - **SIG-4** **Provenance display:**
   - Detail views show the source name, sample time, the type's last sync and a label on user-entered samples.
   - Today shows a value's age only when it is stale, and a source label only when the source isn't the usual one.
+  - The usual source for weight and sleep is the source with the most samples in the last 30 days; HRV and resting HR use the SIG-7 baseline source.
 - **SIG-5** **Weight:**
   - Weight comes only from Health. There is no weigh-in inside Motive.
   - The day's weight is the **earliest sample of the day** (04:00 boundary) from any source, user-entered included. A day with no weigh-in is unknown and never interpolated.
-  - Displayed **Trend Weight** is the 7-day average of days with a value.
-  - The latest weight is shown with its age, labelled stale after 7 days, and still feeds the trend.
+  - Displayed **Trend Weight** is the average of days with a value in the trailing 7 days ending today; it is unknown with no values.
+  - The latest weight is shown with its age, labelled stale after 7 days; only values within the trailing window feed the trend.
 - **SIG-6** **Sleep:**
   - **One source per night, never summed.** Preference: Apple Watch > other wearable or bed device > iPhone / in-bed-only > user-entered.
+  - Source class comes from the device model when present, otherwise **other**. It is never inferred from a source or device name.
   - Duration is the total of the asleep stages (core, deep, REM, unspecified), excluding in-bed and awake time.
-  - A night belongs to the day you wake up. Only the longest block counts, with gaps under 1 h merged, so naps are left out.
+  - A night belongs to the day you wake up under the 04:00 boundary. Only the longest block counts, with gaps under 1 h merged, so naps are left out.
 - **SIG-7** **HRV and resting HR:**
   - Device-measured samples only; user-entered samples are excluded.
-  - Each type has **one baseline source**: the source with the most samples in the last 30 days. Other sources are displayed but kept out of baselines and trends. If the baseline source changes, the baseline starts over.
+  - Each type has **one baseline source**: the source with the most samples in the last 30 days; the most recent sample wins a tie. Other sources are displayed but kept out of baselines and trends. If the baseline source changes, only values since the switch count.
+  - The daily value is the mean of the baseline source's samples for that day.
 - **SIG-8** **Staleness:** last night's sleep and today's HRV and resting HR are unknown without a sample for today. Earlier values are never carried forward.
 - **SIG-9** **Workouts:**
   - A Health workout links to a Motive session when their windows overlap by **≥ 50% of the shorter one**, whatever the workout type. If several qualify, the largest overlap is linked; the rest become **Other Activity**.
@@ -319,16 +323,18 @@ _Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/moti
   - Other Activity is shown as context and never adds volume or completes a session.
   - There is no "use Watch duration?" prompt and no manual link or unlink.
 - **SIG-10** **Signal Baseline and the Today trend line:**
+  - **Last 7** includes today when known.
   - **Baseline:** the median of the 28 days before the last 7, needing ≥ 14 known values, otherwise unknown. Coverage is shown with every figure.
   - **Trend line:** at most one, chosen in the order sleep > resting HR > HRV, and shown only when:
     - **Sleep:** the last-7-night mean is ≥ 30 min under baseline, from ≥ 4 nights;
     - **Resting HR:** the 7-day mean is ≥ 3 bpm above baseline, from ≥ 4 days;
     - **HRV:** the 7-day mean is ≥ 10% under baseline, from ≥ 4 days.
   - Never based on a single-day reading. Nothing shows when no signal deviates or data is insufficient.
-- **SIG-11** **Signals screen:** weight and Trend Weight, sleep, resting HR, HRV and linked workouts or Other Activity. Each has a 14-day sparkline, its Signal Baseline where defined, its per-type status and the last-synced time. Pull-to-refresh syncs.
-- **SIG-12** **Excluding a signal:** it is turned off in Apple Health's permissions, not in Motive. Cached history is kept and ages out of today-scoped values and trends through SIG-8 and the window rules. **Delete this signal's history** is the explicit purge.
+  - Tapping the trend line opens S11 for its signal.
+- **SIG-11** **Signals screen (S10):** opened from the **Health Signals** row in Settings. Shows weight and Trend Weight, sleep, resting HR, HRV and linked workouts or Other Activity. Each has a 14-day sparkline, its Signal Baseline where defined, its per-type status and the last-synced time. Pull-to-refresh syncs.
+- **SIG-12** **Excluding a signal:** it is turned off in Apple Health's permissions, not in Motive. Cached history is kept and ages out of today-scoped values and trends through SIG-8 and the window rules. **Delete this signal's history** purges the cached type and resets its anchor. The confirmation states that Apple Health keeps its own data: turn off access in Apple Health first, or the next sync reads the history again.
 
-_Decided in: [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6); [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2)._
+_Decided in: [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6); [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2); [Slice 3: Health Signals](https://github.com/SandunRathsara/motive/issues/21)._
 
 ### 5.7 Plan Changes and Plan Versions (PLAN)
 
@@ -466,6 +472,7 @@ _Decided in: [Safety escalation triggers and detection](https://github.com/Sandu
   - the Goal and rate preset, the kcal target (floor-checked) and the protein floor;
   - the weekly session target and the Training Program editor;
   - both consents and What the coach can see;
+  - **Health Signals**, opening S10;
   - export, delete all data, and delete a signal's history;
   - the Phase 1 report;
   - About, which credits "USDA FoodData Central".
@@ -487,11 +494,11 @@ _Decided in: [Personal Health Record lifecycle](https://github.com/SandunRathsar
 | S7 | Fuel — day | Food log | Pending drafts, Food Entries by Meal Slot, totals, remaining kcal, Logged Day marking |
 | S8 | Add food | Capture | Photo · Describe |
 | S9 | Food review | Turn a draft into an entry, or edit an entry | Items, Check badges, portion chips, alternatives, clarify, unresolved fragments, slot and time, Confirm |
-| S10 | Signals | Trust the data | Per-signal sparklines and baselines, per-type status, last sync, pull-to-refresh |
-| S11 | Signal detail | Provenance | Samples with source, time, user-entered label; delete this signal's history |
+| S10 | Signals | Trust the data; opens from Settings > Health Signals | Connect Apple Health while notRequested, per-signal sparklines and baselines, per-type status, last sync, pull-to-refresh |
+| S11 | Signal detail | Provenance; the Today trend line opens its signal | Samples with source, time, user-entered label; delete this signal's history |
 | S12 | Coach | Ask why | Thread, citation chips, AI label, What the coach can see, Escalation Cards, new thread |
 | S13 | Plan | See and change the plan | Proposed section, current Plan Version, history with diffs and Evidence Snapshots |
-| S14 | Settings | Control | Targets, Goal, program, consents, export, delete, Phase 1 report, About |
+| S14 | Settings | Control | Targets, Goal, program, consents, Health Signals (S10), export, delete, Phase 1 report, About |
 | S15 | Onboarding | Set up | ONB-1 inputs, starting estimate |
 | S16 | Recovery | Protect the record | DATA-6 options |
 
@@ -518,7 +525,7 @@ The entities below are indicative. Exact schemas are defined by each slice spec 
 
 ## 8. Apple platform constraints
 
-- **Access:** HealthKit needs a native iOS app with the HealthKit entitlement and `NSHealthShareUsageDescription`. Expo Go, the web and JavaScript-only packages are not substitutes. The library choice (`@kingstinct/react-native-healthkit` or a custom Expo module) is an open gate in `docs/TECH_STACK.md`.
+- **Access:** HealthKit needs a native iOS app with the HealthKit entitlement and `NSHealthShareUsageDescription`. Expo Go, the web and JavaScript-only packages are not substitutes. HK-2 (`docs/TECH_STACK.md` §6) closes the library gate with the custom local Expo module `modules/motive-healthkit` (`MotiveHealthKit`).
 - **Authorization:** granted per type and direction and revocable at any time. A denied read can't be told apart from no data, so absence is never reported as denial or treated as zero (SIG-3).
 - **Watch workouts** carry duration and heart rate with little per-set strength detail. They supplement manual set logging and never replace it (SIG-9).
 - **Freshness:** sleep and HRV often arrive after waking, so today's values show "not yet available" without an error state.
@@ -620,7 +627,7 @@ Each item lists what is already fixed. Nothing here may be decided by guessing d
 4. ~~Coach initiative~~ decided: no coach-initiated conversation and no Insight cards (COACH-7, TODAY-2).
 5. **Emergency region:** the country for `[EMERGENCY]` and `[CRISIS]`, with numbers checked against an official source (Safety slice).
 6. **Model provider:** OpenAI or Anthropic, chosen by the FR-1 selection rule (AI proxy and provider selection slice).
-7. **HealthKit library:** Kingstinct or a custom Expo module, after real-device validation (Health Signals slice).
+7. ~~HealthKit library~~ decided: a custom local Swift Expo module, `modules/motive-healthkit` (`MotiveHealthKit`), under HK-2 (`docs/TECH_STACK.md` §6; Health Signals slice, issue #21). Real-device verification remains required.
 8. **Constraint framing:** whether the protein floor or the kcal target reads as the harder constraint when both are missed (Food capture and recognition slice).
 
 **Outside this contract:**

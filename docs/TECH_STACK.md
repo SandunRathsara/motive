@@ -16,6 +16,7 @@
 | Validation | Zod | Validate API, native-bridge, persisted, and other untrusted inputs; infer TypeScript types from schemas where useful. |
 | Backend | One content-stateless AI proxy on Cloudflare Workers; no other backend (decision record AI-1, §6) | UI and domain logic depend on feature service contracts, not a provider SDK. Follow AI-1 for what may leave the device, consent, authentication, caps and logging. |
 | Persistence | Expo SQLite, hand-written SQL migrations, no SQLCipher (decision record PHR-1, §6) | The Personal Health Record is local source of truth; follow PHR-1 for migrations, backup exclusion, export, deletion and recovery. |
+| HealthKit | Read-only custom local Swift Expo module `modules/motive-healthkit` (`MotiveHealthKit`), HK-1 and HK-2 (§6) | Only health services reach the native module; validate the bridge and verify on a real device. |
 | Platform/build | iOS-first; local Xcode builds with free provisioning until v1, then EAS cloud internal builds (BUILD-1 and its free-provisioning amendment, §6) | Follow BUILD-1 for variants, provisioning and tagged installs; preserve shared-UI portability where it does not add scope. |
 | Quality | Typecheck, lint, unit/component, architecture, critical Maestro flows | Create the scripts at bootstrap and run every applicable gate thereafter. |
 | Package manager | npm by default; one lockfile | If another manager is selected, update this row and use only its lockfile and commands. |
@@ -44,7 +45,7 @@
 
 ### HealthKit and Apple Watch gate
 
-Before selecting a HealthKit library or writing a native module, record:
+HK-1 and HK-2 (§6) resolve the iPhone HealthKit gate with a custom local Expo module. Any change to that selection or any watchOS app needs a new record covering:
 
 - required read/write types and why each is necessary;
 - entitlement, usage-description, and config-plugin requirements;
@@ -90,7 +91,7 @@ Use this section for concise, append-only architecture decisions that change the
 Open gates requiring a record before implementation:
 
 - any backend beyond the AI proxy (AI-1);
-- HealthKit library versus custom native module, and any watchOS app;
+- any watchOS app;
 - the AI model provider, chosen by the AI proxy and provider selection slice's coaching bake-off together with the FR-1 meal benchmark and selection rule, and recorded as an AI-1 amendment (the host and health-data transmission boundary are settled by AI-1; the recognition pipeline and gates by FR-1);
 - any inline-style exception;
 - any change to package manager or the BUILD-1 native build workflow.
@@ -134,9 +135,15 @@ Open gates requiring a record before implementation:
   - **Query:** the shared client in `lib/query/client.ts` uses `networkMode: 'always'` so local-record queries run offline.
   - **Fault injection:** verification builds only (`isVerification`), from Settings: pause after export staging is written or after the database is deleted, then force-quit.
 
+- **Amendment (8 November 2026, Health Signals):** from [Slice 3](https://github.com/SandunRathsara/motive/issues/21).
+  - **Migration v2:** adds `health_sample`, `signal_availability` and `health_sync_anchor`; derived values are computed on read, never stored.
+  - **Export:** `healthSignals` v1 covers normalized samples with provenance, availability and anchors as opaque strings. HRV is exported in s (the native/cache unit is ms).
+  - **Erase:** the `health` participant quiesces and drains sync before record removal, then resets subscribers and drops the singleton registration.
+  - **Singleton:** `features/health/services/health.ts` lazily creates the native adapter and sync service and registers it with `setActiveHealthSync`. Registration subscribes once to post-commit Query invalidation. A fresh record gets a new registered instance; stopped instances are never reused. The root triggers foreground sync only after the record is ready and writes are allowed, without gating rendering.
+
 ### HK-1: HealthKit read scope and provenance
 
-- **Date:** 1 November 2026. **Status:** accepted. **Source:** [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6), informed by [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2). Records the read types, permission scope, empty-sample handling and provenance parts of the §3 HealthKit gate. The library choice stays open.
+- **Date:** 1 November 2026. **Status:** accepted. **Source:** [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6), informed by [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2). Records the read types, permission scope, empty-sample handling and provenance parts of the §3 HealthKit gate. HK-2 resolves the native-module selection.
 - **Context:** Apple hides read denial: an empty read can't be told apart from denied, missing or unsynced data. Phase 1 has no watchOS app.
 - **Decision:**
   - **Scope:** read-only. Read only body mass, workouts, sleep analysis, HRV (SDNN) and resting heart rate. No write types and no `NSHealthUpdateUsageDescription`. No clinical records.
@@ -144,7 +151,7 @@ Open gates requiring a record before implementation:
   - **Storage:** normalized samples and anchors are cached in the Personal Health Record and fall under PHR-1 export and deletion.
   - **Availability:** per type, only observable states: `unavailableOnDevice`, `notRequested`, `requested` with `hasSamples` / `noReadableSamples` / `queryError`, plus last query and last sample times. Read denial is never inferred.
   - **Provenance DTO:** UUID, type, interval, value with explicit unit (or sleep stage), source bundle ID and name, source revision, optional device, and the user-entered flag. Zod-validated at the health service boundary. A device is never made up from a display name.
-- **Consequences:** library selection (Kingstinct versus a custom Expo module) and real-device verification remain an open gate. Adding a type needs a Phase 1 rule that consumes it and a new decision record.
+- **Consequences:** HK-2 selects the custom Expo module; real-device verification remains required. Adding a type needs a Phase 1 rule that consumes it and a new decision record.
 
 ### AI-1: AI proxy and health-data transmission boundary
 
@@ -220,6 +227,21 @@ Open gates requiring a record before implementation:
 ### Bootstrap device findings (8 November 2026)
 
 - **Unclean exits:** on a real iPhone, swipe-killing from the app switcher delivers `background` before termination, so it clears the launch sentinel and records nothing. This is intended: `unclean_exit` is crash evidence (REQUIREMENT §10b), and a user force-quit is not a crash. Verify recording by sending `SIGKILL` to the foreground process (`xcrun devicectl device process signal --signal SIGKILL`), then relaunching; one row with the killed build's ID is expected.
+
+### HK-2: HealthKit native module
+
+- **Date:** 8 November 2026. **Status:** accepted. **Source:** [Slice 3: Health Signals](https://github.com/SandunRathsara/motive/issues/21). Closes the §3 iPhone HealthKit library gate.
+- **Context:** HK-1 fixes exactly five read types, foreground anchored sync and provenance. The owner selects option B rather than `@kingstinct/react-native-healthkit`.
+- **Decision:** a custom Swift Expo module at `modules/motive-healthkit`, Expo module name `MotiveHealthKit`. It exposes only:
+  - `isAvailable()`;
+  - `requestReadAuthorization()`, with an empty share set and exactly the five HK-1 read types: `bodyMass`, `heartRateVariabilitySDNN`, `restingHeartRate`, `sleepAnalysis`, `workoutType`;
+  - `requestStatus(type)`, using per-type `getRequestStatusForAuthorization` with an empty share set and that one read type;
+  - `anchoredFetch(type, anchor, startMs, limit)`, using paged `HKAnchoredObjectQuery`; returns raw samples, deleted UUIDs, a new opaque anchor (`NSKeyedArchiver`, base64) and `hasMore`.
+  - Units are kg, ms and count/min. Device fields come from `HKDevice` only, never inferred from a name. The user-entered flag comes from `HKMetadataKeyWasUserEntered`. Workouts carry only interval and activity type.
+- **Config:** the module's local config plugin adds `com.apple.developer.healthkit` and `NSHealthShareUsageDescription`. No `NSHealthUpdateUsageDescription`, `com.apple.developer.healthkit.background-delivery` or clinical-records access. The podspec links `HealthKit.framework`. Inspect prebuild output to confirm this scope.
+- **Why:** a minimal surface matching HK-1 exactly, without plugin defaults that add write strings or background delivery, without Nitro, and following the existing `motive-record-directory` local-module pattern.
+- **Boundary:** only `features/health/services/` may reach the native module, enforced by the architecture check. The TypeScript wrapper validates the envelope; the health sync service Zod-validates each sample's provenance DTO, skipping and counting invalid samples.
+- **Consequences:** real-device verification (issue #21's Device Checklist) remains required; mocks are not HealthKit evidence. Anchors are opaque strings in export.
 
 ## 7. Quality gates
 
