@@ -28,6 +28,9 @@ Add folders when they first contain real code; do not scaffold empty speculative
     nutrition.types.ts       Domain types inferred or shared by the feature
     nutrition.utils.ts       Pure calculations
   /workouts
+  /plan                      Plan state schema and append-only Plan Version store
+  /profile                   Profile repository and schema
+  /onboarding                Orchestration hooks and services only; no rules
   /health
   /coach
 /store                       Truly global client state; one focused store per file
@@ -101,6 +104,7 @@ Atoms and generic molecules accept primitive or generic presentation props. Feat
 Additional rules:
 
 - Cross-feature imports must use an explicitly exported public contract. If sharing becomes bidirectional, extract the shared contract to `/lib/contracts` rather than create a cycle.
+- Nutrition, workouts and onboarding use the `plan` public contract. The `plan` feature imports none of them ([Slice 4](https://github.com/SandunRathsara/motive/issues/22)).
 - UI calls feature hooks or service contracts, never concrete backend/native adapters.
 - Services return domain objects or typed errors, not provider responses.
 - Zod validation happens at network, native, storage, and other untrusted boundaries before data enters domain logic.
