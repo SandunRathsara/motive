@@ -19,6 +19,15 @@ test('native identity matches the tag suffix, owner is the default and Worker is
   expect(build.variant).toBe('owner');
   expect(build.isVerification).toBe(false);
   expect(build.workerUrl).toBeUndefined();
+  expect(build.buildIdentity).toEqual({ variant: 'owner', version: '1.0.0', buildNumber: '3', buildId: '1.0.0+3', gitTag: 'build/owner/1.0.0+3' });
+});
+
+test('git tag follows the BUILD-1 release tag for the variant; dev identities have none', () => {
+  process.env.EXPO_PUBLIC_APP_VARIANT = 'verification';
+  expect(jest.requireActual<typeof import('./build')>('./build').gitTag).toBe('build/verification/1.0.0+3');
+  jest.resetModules();
+  jest.doMock('expo-application', () => ({ nativeApplicationVersion: null, nativeBuildVersion: null }));
+  expect(jest.requireActual<typeof import('./build')>('./build').gitTag).toBeNull();
 });
 
 test('verification flag is selected from the public compile-time variable', () => {

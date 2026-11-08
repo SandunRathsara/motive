@@ -22,4 +22,14 @@ const identity = z.object({
 });
 
 export const workerUrl = identity.config?.extra?.workerUrl;
-export const buildId = `${identity.nativeVersion ?? identity.config?.version ?? '0.0.0'}+${identity.nativeBuild ?? identity.config?.ios?.buildNumber ?? 'dev'}`;
+export const version = identity.nativeVersion ?? identity.config?.version ?? '0.0.0';
+export const buildNumber = identity.nativeBuild ?? identity.config?.ios?.buildNumber ?? 'dev';
+export const buildId = `${version}+${buildNumber}`;
+/**
+ * BUILD-1: the release script tags every installed build `build/<variant>/<version>+<buildNumber>`
+ * from the same committed version source the native identity is built from, so the tag is derived
+ * here rather than injected. Untagged development identities have no tag.
+ */
+export const gitTag = /^\d+\.\d+\.\d+$/.test(version) && /^[1-9]\d*$/.test(buildNumber) ? `build/${variant}/${buildId}` : null;
+export interface BuildIdentity { variant: typeof variant; version: string; buildNumber: string; buildId: string; gitTag: string | null }
+export const buildIdentity: BuildIdentity = { variant, version, buildNumber, buildId, gitTag };

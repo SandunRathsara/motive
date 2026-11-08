@@ -17,6 +17,8 @@ const PROVIDER_PACKAGES = [
 const NATIVE_DATA = /^(?:expo-sqlite|expo-file-system|expo-sharing)(?:\/|$)/;
 // docs/ARCHITECTURE.md §4–§5; TECH_STACK §3: HealthKit belongs only to health services.
 const HEALTHKIT = /healthkit|^react-native-health(?:\/|$)/i;
+// docs/ARCHITECTURE.md §4; slice 2 (DATA-4): one native share adapter, behind the data feature's services.
+const SHARE_ADAPTER = 'features/data/services/share.ts';
 
 function filesIn(directory) {
   if (!existsSync(directory)) return [];
@@ -62,6 +64,10 @@ export function checkArchitecture(root = process.cwd()) {
         add(node, 'healthkit-boundary', `HealthKit package '${specifier}' belongs in features/health/services/.`, 4);
       }
       // docs/ARCHITECTURE.md §2, §5: shared client stores live only in /store.
+      // docs/ARCHITECTURE.md §4: the native share sheet is reached only through the data feature's share adapter.
+      if (isPackage && /^expo-sharing(?:\/|$)/.test(specifier) && relative !== SHARE_ADAPTER && relative !== SHARE_ADAPTER.replace(/\.ts$/, '.test.ts')) {
+        add(node, 'native-share', `Native share '${specifier}' belongs only in ${SHARE_ADAPTER}.`, 4);
+      }
       if (isPackage && /^zustand(?:\/|$)/.test(specifier) && layer !== 'store') {
         add(node, 'store-placement', 'Zustand imports belong in store/.', 5);
       }
@@ -75,10 +81,13 @@ export function checkArchitecture(root = process.cwd()) {
       } else if (layer === 'components' && target !== null) {
         forbidden = dependency !== 'components' && !(target === 'lib/theme' || target.startsWith('lib/theme/')) && !(typeOnly && featureContract);
       } else if (layer === 'features' && target !== null) {
-        forbidden = !['features', 'lib'].includes(dependency) || (dependency === 'features' && target.split('/')[1] !== domain && !/^features\/[^/]+\/index\.ts$/.test(target));
+        // docs/ARCHITECTURE.md §4–§5: feature hooks/services may read shared client stores.
+        forbidden = !['features', 'lib', 'store'].includes(dependency) || (dependency === 'features' && target.split('/')[1] !== domain && !/^features\/[^/]+\/index\.ts$/.test(target));
       } else if (layer === 'store' && target !== null) {
         // docs/ARCHITECTURE.md §4: independent stores depend only on domain types and pure lib utilities/contracts.
-        forbidden = !(dependency === 'features' && typeOnly) && !/^lib\/(?:utils|contracts)\//.test(target);
+        // A colocated test may import the one store it covers (ARCHITECTURE §2, §8).
+        const subject = relative.replace(/\.test\.tsx?$/, '.ts');
+        forbidden = !(dependency === 'features' && typeOnly) && !/^lib\/(?:utils|contracts)\//.test(target) && !(subject !== relative && target === subject);
       } else if (layer === 'lib' && target !== null) {
         forbidden = ROOTS.filter((name) => name !== 'lib').includes(dependency);
       }

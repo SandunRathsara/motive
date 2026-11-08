@@ -1,7 +1,7 @@
-import * as Sharing from 'expo-sharing';
 import * as SplashScreen from 'expo-splash-screen';
 import { eraseRecord, openRecord, rawDatabaseUri, restoreSnapshot, type OpenRecordResult } from '@/lib/persistence';
 import { logEvent } from '@/lib/logger';
+import { nativeShare } from '@/features/data';
 
 // Hold before any React view hierarchy mounts; the root gate renders null while opening.
 void SplashScreen.preventAutoHideAsync().catch(() => logEvent('record_failure', { errorCode: 'splashFailed' }));
@@ -21,9 +21,7 @@ export const recoveryService = {
   },
   async share(): Promise<RecoveryOutcome> {
     try {
-      if (!await Sharing.isAvailableAsync()) return { ok: false, code: 'sharingUnavailable' };
-      await Sharing.shareAsync(await rawDatabaseUri(), { mimeType: 'application/octet-stream', dialogTitle: 'Share raw database' });
-      return { ok: true };
+      return await nativeShare.share({ uri: await rawDatabaseUri(), mimeType: 'application/octet-stream', dialogTitle: 'Share raw database' });
     } catch { return { ok: false, code: 'shareFailed' }; }
   },
   async reveal(): Promise<void> {

@@ -1,5 +1,8 @@
-const logEvents = ['record_failure', 'rows_skipped'] as const;
-const errorCodes = ['openFailed', 'integrityFailed', 'migrationFailed', 'newerSchema', 'eraseFailed', 'restoreFailed', 'closeFailed', 'metricTrackingFailed', 'splashFailed'] as const;
+const logEvents = ['record_failure', 'rows_skipped', 'export_finished', 'export_failed', 'erase_finished', 'erase_failed', 'report_failed'] as const;
+const errorCodes = [
+  'openFailed', 'integrityFailed', 'migrationFailed', 'newerSchema', 'eraseFailed', 'restoreFailed', 'closeFailed', 'metricTrackingFailed', 'splashFailed',
+  'storageFull', 'writeFailed', 'validationFailed', 'cancelled', 'sharingUnavailable', 'shareFailed', 'stagingSweepFailed', 'eraseBlocked', 'reportFailed',
+] as const;
 export type LogEvent = typeof logEvents[number];
 export type ErrorCode = typeof errorCodes[number];
 export interface LogFields {

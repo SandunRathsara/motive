@@ -1,23 +1,21 @@
-import * as Sharing from 'expo-sharing';
 import * as SplashScreen from 'expo-splash-screen';
 import { eraseRecord, openRecord, rawDatabaseUri, restoreSnapshot } from '@/lib/persistence';
+import { nativeShare } from '@/features/data';
 import { recoveryService } from './recovery';
 
 jest.mock('@/lib/persistence', () => ({ openRecord: jest.fn(), eraseRecord: jest.fn(), restoreSnapshot: jest.fn(), rawDatabaseUri: jest.fn() }));
-jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(), shareAsync: jest.fn() }));
+jest.mock('@/features/data', () => ({ nativeShare: { share: jest.fn() } }));
 jest.mock('expo-splash-screen', () => ({ preventAutoHideAsync: jest.fn(async () => true), hideAsync: jest.fn(async () => {}) }));
 
 beforeEach(() => jest.clearAllMocks());
-test('native sharing receives only the raw database URI and returns typed failures', async () => {
+test('the share adapter receives only the raw database URI and failures stay typed', async () => {
   jest.mocked(rawDatabaseUri).mockResolvedValue('file:///app/Motive/record.sqlite');
-  jest.mocked(Sharing.isAvailableAsync).mockResolvedValue(true);
-  jest.mocked(Sharing.shareAsync).mockResolvedValue(undefined);
+  jest.mocked(nativeShare.share).mockResolvedValue({ ok: true });
   expect(await recoveryService.share()).toEqual({ ok: true });
-  expect(Sharing.shareAsync).toHaveBeenCalledWith('file:///app/Motive/record.sqlite', expect.any(Object));
-  jest.mocked(Sharing.isAvailableAsync).mockResolvedValue(false);
+  expect(nativeShare.share).toHaveBeenCalledWith(expect.objectContaining({ uri: 'file:///app/Motive/record.sqlite' }));
+  jest.mocked(nativeShare.share).mockResolvedValue({ ok: false, code: 'sharingUnavailable' });
   expect(await recoveryService.share()).toEqual({ ok: false, code: 'sharingUnavailable' });
-  jest.mocked(Sharing.isAvailableAsync).mockResolvedValue(true);
-  jest.mocked(Sharing.shareAsync).mockRejectedValue(new Error('private native path'));
+  jest.mocked(nativeShare.share).mockRejectedValue(new Error('private native path'));
   expect(await recoveryService.share()).toEqual({ ok: false, code: 'shareFailed' });
 });
 test('restore and erase map verification failures without exposing paths', async () => {
