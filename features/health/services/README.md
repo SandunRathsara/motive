@@ -31,7 +31,10 @@ before per-type work return an overall `queryFailed` with no invented type rows.
 
 The first authorized attempt fixes the 90-day lower bound even if its query
 fails. Every subsequent page retains that predicate and commits adds, deletes and
-its new opaque anchor together. A committed page emits its type; availability
+its new opaque anchor together only when raw samples (including validation skips)
+or deleted UUIDs were returned. Empty pages never advance the stored anchor:
+HealthKit hides read denial and can still return a current cursor, which would
+skip history after access is restored. A committed page emits its type; availability
 changes also emit after persistence, so subscribers must tolerate repeated types.
 Callbacks cannot roll back commits. Sync and history deletion are serialized;
 native calls cannot be interrupted by this adapter contract, so stopping discards

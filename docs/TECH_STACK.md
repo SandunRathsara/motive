@@ -241,6 +241,7 @@ Open gates requiring a record before implementation:
 - **Config:** the module's local config plugin adds `com.apple.developer.healthkit` and `NSHealthShareUsageDescription`. No `NSHealthUpdateUsageDescription`, `com.apple.developer.healthkit.background-delivery` or clinical-records access. The podspec links `HealthKit.framework`. Inspect prebuild output to confirm this scope.
 - **Why:** a minimal surface matching HK-1 exactly, without plugin defaults that add write strings or background delivery, without Nitro, and following the existing `motive-record-directory` local-module pattern.
 - **Boundary:** only `features/health/services/` may reach the native module, enforced by the architecture check. The TypeScript wrapper validates the envelope; the health sync service Zod-validates each sample's provenance DTO, skipping and counting invalid samples.
+- **Anchor persistence:** advance only for pages with raw samples (including validation skips) or deleted UUIDs; empty reads can hide denial while returning a current DB cursor, so their anchors are never stored.
 - **Consequences:** real-device verification (issue #21's Device Checklist) remains required; mocks are not HealthKit evidence. Anchors are opaque strings in export.
 
 ## 7. Quality gates

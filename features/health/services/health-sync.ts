@@ -178,7 +178,10 @@ export function createHealthSync(deps: HealthSyncDependencies) {
               const writer = createHealthRepository(tx);
               await writer.upsertSamples(samples);
               await writer.deleteByUuids(type, page.deletedUuids);
-              await writer.setAnchor({ type, anchor: page.anchor, backfillStartMs });
+              // Empty HealthKit reads can hide denial while returning a cursor past unread history.
+              if (page.samples.length > 0 || page.deletedUuids.length > 0) {
+                await writer.setAnchor({ type, anchor: page.anchor, backfillStartMs });
+              }
               const cached = (await writer.listSamples(type)).rows;
               const next: SignalAvailability = { type, state: 'requested',
                 readState: cached.length ? 'hasSamples' : 'noReadableSamples', lastQueryAt: queriedAt,
@@ -192,6 +195,7 @@ export function createHealthSync(deps: HealthSyncDependencies) {
             result.addedCount += samples.length;
             result.deletedCount += page.deletedUuids.length;
             if (samples.length || page.deletedUuids.length) emit(type);
+            // Native filtering can leave an empty DTO page with hasMore: continue in memory only.
             anchor = page.anchor;
             hasMore = page.hasMore;
           } while (hasMore);

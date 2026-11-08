@@ -56,12 +56,115 @@ test('first backfill is bounded to 90 days and retains its fixed lower bound on 
   const sync = createHealthSync({ adapter, connection: db, now: () => clock, pageLimit: 1 });
   await sync.sync('open');
   expect((await repository.listSamples('bodyMass')).rows.map((sample) => sample.uuid)).toEqual([uuid(2), uuid(3)]);
+  expect((await repository.listAnchors('bodyMass')).rows[0]?.anchor).toBe('fake:bodyMass:3');
   expect((await repository.listAnchors()).rows.find((row) => row.type === 'bodyMass')).toMatchObject({ backfillStartMs: Date.parse('2026-08-10T12:00:00Z') });
   clock += 10 * day;
   adapter.addSample(weight(4, now - 89 * day));
   await sync.sync('refresh');
   expect((await repository.listSamples('bodyMass')).rows.map((sample) => sample.uuid)).toEqual([uuid(2), uuid(4), uuid(3)]);
   expect((await repository.listAnchors()).rows.find((row) => row.type === 'bodyMass')?.backfillStartMs).toBe(Date.parse('2026-08-10T12:00:00Z'));
+});
+
+test.each([null, 'A-before'])('re-granting reads recovers history from the prior anchor %s, not the denied query cursor', async (priorAnchor) => {
+  adapter.authorizationRequested = true;
+  if (priorAnchor) await repository.setAnchor({ type: 'bodyMass', anchor: priorAnchor, backfillStartMs: now - 90 * day });
+  let denied = true;
+  let clock = now;
+  const fetch = adapter.anchoredFetch.bind(adapter);
+  adapter.anchoredFetch = async (type, input) => {
+    if (type !== 'bodyMass') return fetch(type, input);
+    // HealthKit hides denial but returns a current DB cursor that excludes the old sample.
+    if (denied || input.anchor === 'A-now') return { samples: [], deletedUuids: [], anchor: 'A-now', hasMore: false };
+    return { samples: input.anchor === priorAnchor ? [weight(1)] : [], deletedUuids: [], anchor: 'A-history', hasMore: false };
+  };
+  const sync = createHealthSync({ adapter, connection: db, now: () => clock });
+  const deniedResult = await sync.sync('open');
+  expect(deniedResult.types.find((row) => row.type === 'bodyMass')).toMatchObject({
+    availability: { state: 'requested', readState: 'noReadableSamples', lastQueryAt: now, lastSampleAt: null }, errors: [],
+  });
+  denied = false;
+  clock += day;
+  await sync.sync('refresh');
+  expect((await repository.listSamples('bodyMass')).rows.map((sample) => sample.uuid)).toEqual([uuid(1)]);
+  expect((await repository.listAnchors('bodyMass')).rows[0]?.anchor).toBe('A-history');
+  expect((await repository.listAvailability('bodyMass')).rows[0]).toMatchObject({
+    state: 'requested', readState: 'hasSamples', lastQueryAt: now + day, lastSampleAt: now - day,
+  });
+});
+
+test('a fresh record synced with reads off re-imports the full 90-day window after re-grant', async () => {
+  adapter.authorizationRequested = true;
+  const { value: _value, unit: _unit, type: _type, ...common } = weight(4);
+  const history: HealthSampleDto[] = [
+    weight(1, now - 90 * day - 1), weight(2, now - 90 * day), weight(3),
+    { ...common, type: 'sleep', stage: 'asleepCore' },
+    { ...weight(5), type: 'hrv', unit: 'ms' },
+    { ...weight(6), type: 'restingHeartRate', unit: 'bpm' },
+    { ...common, uuid: uuid(7), type: 'workout', activityType: 50 },
+  ];
+  history.forEach((sample) => adapter.addSample(sample));
+  let denied = true;
+  const fetch = adapter.anchoredFetch.bind(adapter);
+  adapter.anchoredFetch = async (type, input) => {
+    const page = await fetch(type, input);
+    return denied ? { ...page, samples: [], deletedUuids: [], hasMore: false } : page;
+  };
+  const sync = createHealthSync({ adapter, connection: db, now: () => now });
+  expect((await repository.listAnchors()).rows).toEqual([]);
+  await sync.sync('open');
+  expect((await repository.listSamples()).rows).toEqual([]);
+  expect((await repository.listAnchors()).rows).toEqual(healthSignalTypes.map((type) => ({
+    type, anchor: null, backfillStartMs: now - 90 * day,
+  })).sort((a, b) => a.type.localeCompare(b.type)));
+  denied = false;
+  await sync.sync('refresh');
+  expect((await repository.listSamples()).rows.map((sample) => sample.uuid).sort()).toEqual([
+    uuid(2), uuid(3), uuid(4), uuid(5), uuid(6), uuid(7),
+  ]);
+});
+
+test('a populated type retains its real anchor while off and imports samples added during that period', async () => {
+  adapter.authorizationRequested = true;
+  adapter.addSample(weight(1));
+  let denied = false;
+  let clock = now;
+  const fetch = adapter.anchoredFetch.bind(adapter);
+  adapter.anchoredFetch = async (type, input) => {
+    const page = await fetch(type, input);
+    return denied && type === 'bodyMass' ? { ...page, samples: [], deletedUuids: [], hasMore: false } : page;
+  };
+  const sync = createHealthSync({ adapter, connection: db, now: () => clock });
+  await sync.sync('open');
+  denied = true;
+  // An unrelated type advances HealthKit's global database position.
+  adapter.addSample({ ...weight(2), type: 'hrv', unit: 'ms' });
+  clock += day;
+  await sync.sync('refresh');
+  expect((await repository.listAvailability('bodyMass')).rows[0]).toMatchObject({
+    state: 'requested', readState: 'hasSamples', lastQueryAt: now + day, lastSampleAt: now - day,
+  });
+  adapter.addSample(weight(3, now));
+  await sync.sync('refresh');
+  denied = false;
+  await sync.sync('refresh');
+  expect((await repository.listSamples('bodyMass')).rows.map((sample) => sample.uuid)).toEqual([uuid(1), uuid(3)]);
+  expect((await repository.listAnchors('bodyMass')).rows[0]?.anchor).toBe('fake:bodyMass:3');
+});
+
+test('empty pages can continue pagination in memory without advancing the stored anchor', async () => {
+  adapter.authorizationRequested = true;
+  const fetch = adapter.anchoredFetch.bind(adapter);
+  adapter.anchoredFetch = async (type, input) => {
+    if (type !== 'bodyMass') return fetch(type, input);
+    return input.anchor === null
+      ? { samples: [], deletedUuids: [], anchor: 'A-filtered', hasMore: true }
+      : { samples: [], deletedUuids: [], anchor: 'A-now', hasMore: false };
+  };
+  const result = await createHealthSync({ adapter, connection: db, now: () => now }).sync('open');
+  expect(result.types.find((row) => row.type === 'bodyMass')).toMatchObject({
+    addedCount: 0, skippedCount: 0, availability: { readState: 'noReadableSamples', lastQueryAt: now }, errors: [],
+  });
+  expect((await repository.listAnchors('bodyMass')).rows[0]).toEqual({ type: 'bodyMass', anchor: null, backfillStartMs: now - 90 * day });
 });
 
 test('anchored additions, edits and Health deletions preserve stable IDs and remove cached rows', async () => {
@@ -103,6 +206,7 @@ test('availability moves from notRequested through empty, populated and queryErr
   adapter.deleteSample('bodyMass', uuid(1));
   await sync.sync('refresh');
   expect((await repository.listAvailability()).rows.find((row) => row.type === 'bodyMass')).toMatchObject({ readState: 'noReadableSamples', lastSampleAt: null });
+  expect((await repository.listAnchors('bodyMass')).rows[0]?.anchor).toBe('fake:bodyMass:2');
   expect((await repository.listAnchors()).rows.map((row) => row.type).sort()).toEqual([...healthSignalTypes].sort());
 });
 
@@ -140,6 +244,20 @@ test('malformed and wrong-type samples are skipped and counted while valid page 
   });
   expect((await repository.listAnchors()).rows.find((row) => row.type === 'bodyMass')?.anchor).not.toBeNull();
   expect(logged).toHaveBeenCalledWith('rows_skipped', { count: 3 });
+});
+
+test('an invalid-only page advances its anchor so later syncs do not re-fetch the bad rows', async () => {
+  adapter.authorizationRequested = true;
+  adapter.injectRawSample('bodyMass', { ...weight(1), unit: 'lb' });
+  const sync = createHealthSync({ adapter, connection: db, now: () => now });
+  const first = await sync.sync('open');
+  expect(first.types.find((row) => row.type === 'bodyMass')).toMatchObject({
+    addedCount: 0, skippedCount: 1, errors: [{ kind: 'validationSkipped', type: 'bodyMass', count: 1 }],
+  });
+  expect((await repository.listSamples('bodyMass')).rows).toEqual([]);
+  expect((await repository.listAnchors('bodyMass')).rows[0]?.anchor).toBe('fake:bodyMass:1');
+  const next = await sync.sync('refresh');
+  expect(next.types.find((row) => row.type === 'bodyMass')).toMatchObject({ addedCount: 0, skippedCount: 0, errors: [] });
 });
 
 test('a failed page rolls back its adds, deletes and anchor, while another type still commits', async () => {
@@ -350,6 +468,26 @@ test('deleteHistory purges only its type, resets its anchor, emits a commit and 
   expect((await repository.listAnchors()).rows.some((row) => row.type === 'bodyMass')).toBe(false);
   expect((await repository.listAvailability()).rows.find((row) => row.type === 'bodyMass')).toMatchObject({ readState: 'noReadableSamples', lastSampleAt: null });
   expect(events).toEqual([['bodyMass']]);
+  await sync.sync('refresh');
+  expect((await repository.listSamples('bodyMass')).rows.map((sample) => sample.uuid)).toEqual([uuid(1)]);
+});
+
+test('deleting a signal history while reads are off keeps its reset anchor until re-grant re-imports it', async () => {
+  adapter.authorizationRequested = true;
+  adapter.addSample(weight(1));
+  let denied = false;
+  const fetch = adapter.anchoredFetch.bind(adapter);
+  adapter.anchoredFetch = async (type, input) => {
+    const page = await fetch(type, input);
+    return denied && type === 'bodyMass' ? { ...page, samples: [], deletedUuids: [], hasMore: false } : page;
+  };
+  const sync = createHealthSync({ adapter, connection: db, now: () => now });
+  await sync.sync('open');
+  denied = true;
+  expect(await sync.deleteHistory('bodyMass')).toEqual({ ok: true });
+  await sync.sync('refresh');
+  expect((await repository.listAnchors('bodyMass')).rows[0]?.anchor).toBeNull();
+  denied = false;
   await sync.sync('refresh');
   expect((await repository.listSamples('bodyMass')).rows.map((sample) => sample.uuid)).toEqual([uuid(1)]);
 });
