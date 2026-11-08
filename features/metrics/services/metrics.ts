@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { buildId } from '@/lib/build';
 import { parseRows, requireRecord } from '@/lib/persistence';
+import { recordWritesAllowed } from '@/store/record-lifecycle';
 import { metricEventSchema, metricRowSchema, type MetricEvent } from '../metrics.schemas';
 
 export const metrics = {
   async record(event: MetricEvent, build: string = buildId): Promise<void> {
+    if (!recordWritesAllowed()) throw Object.assign(new Error('Record writes are blocked'), { code: 'recordWritesBlocked' });
     const parsed = metricEventSchema.parse(event);
     const stamp = z.string().min(1).max(128).parse(build);
     // SQLite supplies a v4 UUID; do not assume Hermes provides Web Crypto.

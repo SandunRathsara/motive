@@ -3,18 +3,25 @@ import type { RecordFailure } from '@/lib/persistence';
 import { recoveryService } from '../services/recovery';
 import { useRecordGate } from './useRecordGate';
 import { useRecordRecovery } from './useRecordRecovery';
+import { useRecordLifecycle } from '@/store/record-lifecycle';
+
+jest.mock('@/features/data', () => ({ aiRetentionNotice: 'Data already sent to the AI provider for coaching or food recognition is kept by them for up to 30 days for abuse monitoring, or longer if flagged, and Motive can’t recall it. Motive’s server keeps none of your health or chat content.' }));
 
 jest.mock('../services/recovery', () => ({ recoveryService: {
   open: jest.fn(), restore: jest.fn(), erase: jest.fn(), share: jest.fn(), reveal: jest.fn(async () => {}),
 } }));
 const service = jest.mocked(recoveryService);
+const initial = useRecordLifecycle.getState();
 const failures: RecordFailure[] = [
   { code: 'openFailed' }, { code: 'integrityFailed' }, { code: 'migrationFailed', from: 0, to: 1 },
   { code: 'newerSchema', found: 2, supported: 1 },
 ];
 beforeEach(() => {
-  jest.clearAllMocks();
-  service.erase.mockResolvedValue({ ok: true });
+  jest.resetAllMocks();
+  useRecordLifecycle.setState(initial, true);
+  service.erase.mockImplementation(async () => {
+    useRecordLifecycle.getState().beginErase(); useRecordLifecycle.getState().completeErase(); return { ok: true };
+  });
   service.restore.mockResolvedValue({ ok: true });
   service.share.mockResolvedValue({ ok: true });
 });
@@ -58,11 +65,48 @@ test('erase requires the exact case-sensitive phrase, calls once and reopens aft
   expect(service.erase).not.toHaveBeenCalled();
   await act(() => result.current.model.setConfirmation(' ERASE '));
   expect(result.current.model.canErase).toBe(true);
+  expect(result.current.model.warning).toContain('Data already sent to the AI provider for coaching or food recognition');
   service.open.mockResolvedValue({ status: 'ready', handle: {} as never, snapshotExists: false });
   await act(() => result.current.model.confirmErase());
   expect(service.erase).toHaveBeenCalledTimes(1);
   expect(service.open).toHaveBeenCalledTimes(2);
   expect(result.current.gate.status).toBe('ready');
+});
+
+test('an erase outside Recovery invalidates the gate until exactly one fresh open completes', async () => {
+  service.open.mockResolvedValue({ status: 'ready', handle: {} as never, snapshotExists: false });
+  const { result } = await renderHook(() => useRecordGate());
+  await waitFor(() => expect(result.current.status).toBe('ready'));
+  let finish!: (value: Awaited<ReturnType<typeof recoveryService.open>>) => void;
+  service.open.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  await act(() => { useRecordLifecycle.getState().beginErase(); useRecordLifecycle.getState().completeErase(); });
+  expect(result.current.status).toBe('opening');
+  expect(service.open).toHaveBeenCalledTimes(2);
+  await act(() => finish({ status: 'ready', handle: {} as never, snapshotExists: false }));
+  expect(result.current.status).toBe('ready'); expect(service.open).toHaveBeenCalledTimes(2);
+});
+
+test('launch resume completes its own erase without triggering a second open', async () => {
+  service.open.mockImplementationOnce(async () => {
+    useRecordLifecycle.getState().beginErase(); useRecordLifecycle.getState().completeErase(false);
+    return { status: 'ready', handle: {} as never, snapshotExists: false };
+  });
+  const { result } = await renderHook(() => useRecordGate());
+  await waitFor(() => expect(result.current.status).toBe('ready'));
+  expect(service.open).toHaveBeenCalledTimes(1);
+});
+
+test('blocked launch stays non-ready, reveals the root blocker, and Retry success reopens once', async () => {
+  service.open.mockImplementationOnce(async () => {
+    useRecordLifecycle.getState().beginErase(); useRecordLifecycle.getState().blockErase(); return { status: 'erase-blocked' };
+  });
+  const { result } = await renderHook(() => useRecordGate());
+  expect(result.current.status).toBe('opening');
+  await waitFor(() => expect(service.reveal).toHaveBeenCalled());
+  service.open.mockResolvedValue({ status: 'ready', handle: {} as never, snapshotExists: false });
+  await act(() => { useRecordLifecycle.getState().beginErase(); useRecordLifecycle.getState().completeErase(); });
+  await waitFor(() => expect(result.current.status).toBe('ready'));
+  expect(service.open).toHaveBeenCalledTimes(2);
 });
 
 test('restore warns about discarded writes, requires confirmation, then reopens', async () => {

@@ -32,3 +32,9 @@ test('ending an export never overrides an erase phase', () => {
   store().endExport();
   expect(store().phase).toBe('erasing');
 });
+
+test('launch resume completes without requesting another record open', () => {
+  store().beginErase();
+  store().completeErase(false);
+  expect(store()).toMatchObject({ phase: 'ready', eraseGeneration: 0 });
+});

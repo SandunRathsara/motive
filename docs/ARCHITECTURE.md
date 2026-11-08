@@ -93,7 +93,7 @@ Atoms and generic molecules accept primitive or generic presentation props. Feat
 |---|---|---|
 | `/app` | Components, feature hooks/contracts through each feature's public `index.ts` only, global stores, `/lib` | Private feature files, provider SDKs, native HealthKit calls, business utilities hidden in routes |
 | `/components` | Other components, presentation hooks, type-only domain contracts from public feature `index.ts` or `<domain>.types.ts` / `<domain>.schemas.ts`, `/lib/theme` presentation tokens | Private feature hooks/services, all `@tanstack/react-query` imports, provider SDKs, global stores, native APIs |
-| `/features` | Its own modules, `/lib`, explicit public contracts of another feature | `/app`, JSX components, another feature's private files |
+| `/features` | Its own modules, `/lib`, global stores in `/store`, explicit public contracts of another feature | `/app`, JSX components, another feature's private files |
 | `/store` | Domain types and pure `/lib/utils/**` utilities or `/lib/contracts/**` contracts (§2) | Other store files, components, Query cache, provider SDKs, native APIs |
 | `/lib` | Installed infrastructure packages and platform APIs needed by its contract | `/app`, `/components`, `/features`, `/store` |
 
@@ -104,6 +104,8 @@ Additional rules:
 - Services return domain objects or typed errors, not provider responses.
 - Zod validation happens at network, native, storage, and other untrusted boundaries before data enters domain logic.
 - Do not add barrel files everywhere. Use a barrel only as a deliberate public feature boundary.
+- The native share sheet (`expo-sharing`) is reached only through `features/data/services/share.ts`; other features use its public `nativeShare` adapter.
+- Record-wide registries invert ownership: each feature exports its `ExportSection`s and `EraseParticipant`s (`/lib/contracts`) through its public `index.ts`, and `features/data/registry/` lists them. A new table is claimed by an export section (or excluded with a reason) or the table-completeness test fails.
 
 ## 5. State ownership
 
@@ -127,7 +129,7 @@ Query rules:
 Zustand rules:
 
 - One focused store per file; no monolithic `useAppStore` for unrelated domains.
-- Export typed actions and state. Components receive shared state through routes or dedicated feature hooks rather than importing stores arbitrarily.
+- Export typed actions and state. Components receive shared state through routes or dedicated feature hooks rather than importing stores arbitrarily. Feature hooks and services may read a store or call its actions (for example, erase participants refuse writes unless `store/record-lifecycle.ts` allows them).
 - Stores hold client state only, not fetched server caches, provider clients, secrets, or native module singletons.
 
 ## 6. Feature data flow

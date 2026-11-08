@@ -5,9 +5,11 @@ import { buildId } from '@/lib/build';
 import { openRecord, requireRecord, type RecordAdapters } from '@/lib/persistence';
 import { nodeExecutor } from '@/lib/persistence/testing/node-executor';
 import { metrics } from './metrics';
+import { useRecordLifecycle } from '@/store/record-lifecycle';
 
 let root: string;
 beforeEach(async () => {
+  useRecordLifecycle.setState({ phase: 'ready', eraseGeneration: 0 });
   root = await mkdtemp(join(tmpdir(), 'motive-metrics-'));
   const adapters: RecordAdapters = {
     storage: {
@@ -19,6 +21,12 @@ beforeEach(async () => {
     openDatabase: async (directory, name) => nodeExecutor(join(directory, name)),
   };
   expect((await openRecord(adapters)).status).toBe('ready');
+});
+
+test.each(['erasing', 'erase-blocked'] as const)('record refuses writes while %s', async (phase) => {
+  useRecordLifecycle.setState({ phase });
+  await expect(metrics.record({ event_type: 'unclean_exit' })).rejects.toMatchObject({ code: 'recordWritesBlocked' });
+  expect((await metrics.list({ from: 0, to: Date.now() })).rows).toEqual([]);
 });
 afterEach(async () => { await requireRecord().close(); await rm(root, { recursive: true, force: true }); jest.restoreAllMocks(); });
 

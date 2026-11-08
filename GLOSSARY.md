@@ -139,3 +139,11 @@ _Avoid_: blocker, P0, showstopper
 **Phase 1 Completion Gate**:
 The evidence required to declare the personal-use MVP complete: a successful 14-day personal dogfood ending in a conclusive nutrition review on real data, reliable upgrades and data control, target logging speed, and no open Critical Defects.
 _Avoid_: feature complete, code complete
+
+**Export Section**:
+One feature's part of the Personal Health Record export: a stable key, its own schema version, the tables it claims, and validated records in canonical units. Every table is claimed by an Export Section or excluded with a reason.
+_Avoid_: exporter, dump, backup
+
+**Erase Participant**:
+Anything owning app-controlled data that delete-all must stop, remove and verify: its ingestion, files, keys and in-memory state. Delete-all reports success only after every participant is verified clear.
+_Avoid_: cleaner, reset hook

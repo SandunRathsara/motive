@@ -17,8 +17,8 @@ export interface RecordLifecycleState {
   /** Allowed from ready or erase-blocked; returns false while exporting or already erasing. */
   beginErase(): boolean;
   blockErase(): void;
-  /** Verified success: back to ready with a new generation. */
-  completeErase(): void;
+  /** Verified success; launch resume already owns its open and passes false to avoid another. */
+  completeErase(reopen?: boolean): void;
 }
 
 export const useRecordLifecycle = create<RecordLifecycleState>()((set, get) => ({
@@ -37,7 +37,7 @@ export const useRecordLifecycle = create<RecordLifecycleState>()((set, get) => (
     return true;
   },
   blockErase: () => set({ phase: 'erase-blocked' }),
-  completeErase: () => set((state) => ({ phase: 'ready', eraseGeneration: state.eraseGeneration + 1 })),
+  completeErase: (reopen = true) => set((state) => ({ phase: 'ready', eraseGeneration: state.eraseGeneration + (reopen ? 1 : 0) })),
 }));
 
 /** Writes are refused while erasing or after an unfinished erase. */

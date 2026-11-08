@@ -460,7 +460,7 @@ _Decided in: [Safety escalation triggers and detection](https://github.com/Sandu
 - **DATA-7** **No third-party analytics or crash SDK.** Release logs never contain health values, food text, chat content or file paths.
 - **DATA-8** **Gate Metrics and the Phase 1 report:**
   - A small on-device table records only event type, duration, build and timestamp for: Active Input Time per food entry, recognition wait, set-logging duration, and unclean exits. Never health values, food text or chat.
-  - A Settings screen reports these figures with medians and p90.
+  - A Settings screen reports these figures with medians and p90 (nearest-rank; "—" below 5 samples, always with the count), plus p95 for recognition wait because §10b gates it. Figures are per event type, across all builds by default with per-build counts and a single-build filter.
   - It is on in every Phase 1 build, included in the export and erased by delete-all.
 - **DATA-9** **Settings** contains:
   - the Goal and rate preset, the kcal target (floor-checked) and the protein floor;

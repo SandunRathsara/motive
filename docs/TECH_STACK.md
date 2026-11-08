@@ -227,7 +227,7 @@ Open gates requiring a record before implementation:
 | `test:e2e` | `maestro test .maestro`, iOS simulator only; native HealthKit paths also require real-device verification. |
 
 - Tests are colocated as `*.test.ts(x)` (ARCHITECTURE §2); `jest.config.js` discovers both extensions. Migration tests use Node's built-in `node:sqlite` through `lib/persistence/testing/node-executor.ts`, with no added SQL-engine dependency; this adapter is test-only.
-- `scripts/check-architecture.mjs` invokes `scripts/architecture/check.mjs`, whose source comments cite ARCHITECTURE §3–§5. Rule IDs: `provider-sdk`, `healthkit-boundary`, `store-placement`, `import-boundary`, `feature-jsx`, `inline-style`, `store-count`, `console-usage`. Fixture tests under `scripts/architecture/` verify rejection. The checker also rejects `StyleSheet.create`; lint and architecture rules must stay aligned with the documented boundaries.
+- `scripts/check-architecture.mjs` invokes `scripts/architecture/check.mjs`, whose source comments cite ARCHITECTURE §3–§5. Rule IDs: `provider-sdk`, `healthkit-boundary`, `native-share`, `store-placement`, `import-boundary`, `feature-jsx`, `inline-style`, `store-count`, `console-usage`. Fixture tests under `scripts/architecture/` verify rejection. The checker also rejects `StyleSheet.create`; lint and architecture rules must stay aligned with the documented boundaries.
 - A feature is done only when applicable gates pass and unrun gates are explicitly reported.
 
 ## 8. Official references for implementation work
