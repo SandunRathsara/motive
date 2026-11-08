@@ -70,16 +70,64 @@ test('latest weight retains its actual sample age after it ages out of Trend Wei
   });
 });
 
-test('latest weight means the latest reading, not the selected day weight, and ignores future readings', () => {
+test('latest weight is the earliest reading of the most recent signal day and ignores future readings', () => {
   const result = deriveHealthSignals([
-    weight('early', '2026-11-08T05:00:00Z', 80),
-    weight('late', '2026-11-08T11:00:00Z', 82),
+    weight('late', '2026-11-08T09:00:00Z', 82),
+    { ...weight('early', '2026-11-08T07:00:00Z', 80), userEntered: true },
+    weight('yesterday', '2026-11-07T07:00:00Z', 79),
     weight('future', '2026-11-08T13:00:00Z', 99),
+    weight('tomorrow', '2026-11-09T07:00:00Z', 99),
   ], context).bodyMass;
-  expect(result.today).toMatchObject({ known: true, value: 80 });
-  expect(result.latest).toMatchObject({ known: true, value: 82, ageDays: 0, stale: false, provenance: [{ sampleId: 'late' }] });
+  const selected = { known: true, value: 80, provenance: [{ source, userEntered: true, sampleId: 'early', sampleTime: ms('2026-11-08T07:00:00Z') }] };
+  expect(result.today).toMatchObject(selected);
+  expect(result.latest).toMatchObject({ ...selected, ageDays: 0, stale: false });
   expect(deriveHealthSignals([weight('justStale', '2026-11-01T11:59:59Z', 80)], context).bodyMass.latest)
     .toMatchObject({ known: true, ageDays: 7, stale: true });
+});
+
+test('a 03:30 weigh-in stays in the previous signal day and does not replace its earlier day weight', () => {
+  const samples = [
+    weight('0330', '2026-11-08T03:30:00Z', 82),
+    weight('morning', '2026-11-07T08:00:00Z', 80),
+  ];
+  const result = deriveHealthSignals(samples, context).bodyMass;
+  expect(result.today).toMatchObject({ known: false, reason: 'noSamples' });
+  expect(result.latest).toMatchObject({ known: true, value: 80, ageDays: 1, provenance: [{ sampleId: 'morning', sampleTime: ms('2026-11-07T08:00:00Z') }] });
+  expect(result.series.days[12]).toMatchObject({ day: '2026-11-07', known: true, value: 80 });
+  expect(deriveHealthSignals([...samples, weight('0400', '2026-11-08T04:00:00Z', 81)], context).bodyMass.latest)
+    .toMatchObject({ known: true, value: 81, provenance: [{ sampleId: '0400' }] });
+});
+
+test('latest day weight remains available and stale beyond the fourteen-day sparkline window', () => {
+  const result = deriveHealthSignals([
+    weight('late', '2026-10-20T09:00:00Z', 81),
+    weight('early', '2026-10-20T07:00:00Z', 79),
+    weight('older', '2026-10-19T07:00:00Z', 90),
+  ], context).bodyMass;
+  expect(result).toMatchObject({
+    today: { known: false, reason: 'noSamples' },
+    latest: { known: true, value: 79, ageDays: 19, stale: true, provenance: [{ sampleId: 'early', sampleTime: ms('2026-10-20T07:00:00Z') }] },
+    trendWeight: { known: false, reason: 'noSamples' },
+    series: { coverage: { known: 0, of: 14, unit: 'days' } },
+  });
+});
+
+test('latest and today weight break equal sample-time ties by ID, independent of input order', () => {
+  const samples = [weight('b', '2026-11-08T07:00:00Z', 82), weight('a', '2026-11-08T07:00:00Z', 80)];
+  for (const input of [samples, [...samples].reverse()]) {
+    const result = deriveHealthSignals(input, context).bodyMass;
+    const selected = { known: true, value: 80, provenance: [{ sampleId: 'a' }] };
+    expect(result.today).toMatchObject(selected);
+    expect(result.latest).toMatchObject(selected);
+  }
+});
+
+test('latest weight age and staleness use the selected earliest sample time', () => {
+  const result = deriveHealthSignals([
+    weight('early', '2026-11-01T07:00:00Z', 80),
+    weight('late', '2026-11-01T09:00:00Z', 82),
+  ], { ...context, now: ms('2026-11-08T08:00:00Z') }).bodyMass.latest;
+  expect(result).toMatchObject({ known: true, value: 80, ageDays: 7, stale: true, provenance: [{ sampleId: 'early' }] });
 });
 
 test('the last-seven mean gives equal weight to known days, not to every sample', () => {

@@ -306,7 +306,7 @@ _Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/moti
   - Weight comes only from Health. There is no weigh-in inside Motive.
   - The day's weight is the **earliest sample of the day** (04:00 boundary) from any source, user-entered included. A day with no weigh-in is unknown and never interpolated.
   - Displayed **Trend Weight** is the average of days with a value in the trailing 7 days ending today; it is unknown with no values.
-  - The latest weight is shown with its age, labelled stale after 7 days; only values within the trailing window feed the trend.
+  - The latest weight is the day's weight (earliest sample) of the most recent day with a weigh-in, shown with its age and labelled stale after 7 days; only values within the trailing window feed the trend.
 - **SIG-6** **Sleep:**
   - **One source per night, never summed.** Preference: Apple Watch > other wearable or bed device > iPhone / in-bed-only > user-entered.
   - Source class comes from the device model when present, otherwise **other**. It is never inferred from a source or device name.

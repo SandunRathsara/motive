@@ -138,8 +138,7 @@ function aggregate(input: SignalSeries, operation: 'mean' | 'median' = 'mean', m
   return { known: true, value, provenance: values.flatMap((day) => day.provenance), coverage: input.coverage };
 }
 
-/** Inclusive local signal-day range; provenance contains the selected stable local sample ID. */
-export function dailyWeights(samples: readonly HealthSample[], range: SignalDayRange, context: SignalRulesContext): SignalSeries {
+function earliestWeightsByDay(samples: readonly HealthSample[], context: SignalRulesContext): Map<string, HealthSample & { type: 'bodyMass' }> {
   const earliest = new Map<string, HealthSample & { type: 'bodyMass' }>();
   for (const sample of samples) {
     if (sample.type !== 'bodyMass' || sample.startMs > context.now) continue;
@@ -149,6 +148,12 @@ export function dailyWeights(samples: readonly HealthSample[], range: SignalDayR
       earliest.set(day, sample);
     }
   }
+  return earliest;
+}
+
+/** Inclusive local signal-day range; provenance contains the selected stable local sample ID. */
+export function dailyWeights(samples: readonly HealthSample[], range: SignalDayRange, context: SignalRulesContext): SignalSeries {
+  const earliest = earliestWeightsByDay(samples, context);
   return series(dayKeys(range).map((day) => {
     const sample = earliest.get(day);
     return { day, ...(sample ? known(sample.value, [sample]) : missing('noSamples')) };
@@ -303,8 +308,7 @@ function selectTrendLine(signals: Record<SignalTrendLine['signal'], SignalCompar
 export function deriveHealthSignals(samples: readonly HealthSample[], context: SignalRulesContext): DerivedHealthSignals {
   const today = healthDayKey(context.now, context);
   const weights = dailyWeights(samples, { startDay: shiftDay(today, -13), endDay: today }, context);
-  const latest = samples.filter((sample): sample is HealthSample & { type: 'bodyMass' } => sample.type === 'bodyMass' && sample.startMs <= context.now)
-    .sort((a, b) => b.startMs - a.startMs || a.id.localeCompare(b.id))[0];
+  const latest = [...earliestWeightsByDay(samples, context)].sort(([a], [b]) => b.localeCompare(a))[0]?.[1];
   const nights = sleepNights(samples, context);
   const nightValues = new Map(nights.map((night) => [night.day, night.duration]));
   const sleepToday = nightValues.get(today) ?? missing('notYetAvailable', 'nights');
