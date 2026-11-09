@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ScrollView, Text, View, type ScrollViewInstance } from 'react-native';
 import type { ActiveSessionActions, ActiveSessionContent, ChipDraft, SetSheetViewModel } from '@/features/workouts';
 import { ExerciseCard, type DirectEntryField } from './ExerciseCard';
 import { SetSheet, type SetSheetValues } from './SetSheet';
@@ -40,8 +40,12 @@ export function ActiveSession({ content, actions, sheet, errorText, onOpenHistor
   const remove = async (model: SetSheetViewModel) => {
     if (model.setId && await actions.deleteSet(model.setId)) setSheetState(null);
   };
+  // The docked panel shrinks when the rest bar or undo toast appears; follow the next chip so it is never hidden below the fold.
+  const dock = useRef<ScrollViewInstance>(null);
+  const followFocus = (y: number) => dock.current?.scrollTo({ y, animated: false });
   const card = (exercise: ActiveSessionContent['exercises'][number]) => (
-    <ExerciseCard key={exercise.templateExerciseId} model={exercise} steppers={sheetModel === null} onOpenHistory={onOpenHistory} onToggle={toggle} onLogChip={(key) => { void actions.logChip(key); }}
+    <ExerciseCard key={exercise.templateExerciseId} model={exercise} steppers={sheetModel === null} onFocusLayout={exercise.expanded ? followFocus : undefined}
+      onOpenHistory={onOpenHistory} onToggle={toggle} onLogChip={(key) => { void actions.logChip(key); }}
       onAdjust={adjust} onOpenSheet={(chipKey) => setSheetState({ chipKey, entry: null })}
       onDirectEntry={(chipKey, entry) => setSheetState({ chipKey, entry })} />
   );
@@ -52,7 +56,7 @@ export function ActiveSession({ content, actions, sheet, errorText, onOpenHistor
         {others.map(card)}
       </ScrollView>
       {current && (
-        <ScrollView testID="current-exercise" keyboardShouldPersistTaps="handled" className="max-h-[55%] grow-0"
+        <ScrollView ref={dock} testID="current-exercise" keyboardShouldPersistTaps="handled" className="max-h-[55%] grow-0"
           contentContainerClassName="px-4 pb-3">
           {card(current)}
         </ScrollView>

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { ChipDraft, ExerciseCardViewModel } from '@/features/workouts';
 import { SetChip } from '@/components/molecules/SetChip';
@@ -11,10 +12,12 @@ export type DirectEntryField = 'load' | 'reps';
  * (load by the exercise's increment, reps by 1) so a change before logging stays on the card. Every chip
  * has an Edit control that opens the set sheet. Presentational: the view model carries all copy.
  */
-export function ExerciseCard({ model, steppers = true, onOpenHistory, onToggle, onLogChip, onAdjust, onOpenSheet, onDirectEntry }: {
+export function ExerciseCard({ model, steppers = true, onFocusLayout, onOpenHistory, onToggle, onLogChip, onAdjust, onOpenSheet, onDirectEntry }: {
   model: ExerciseCardViewModel;
   /** False while the set sheet is open, so the same adjustable controls never appear twice. */
   steppers?: boolean;
+  /** Reports where the next chip's block starts, measured from the top of this card, so the host can keep it in view. */
+  onFocusLayout?: (y: number) => void;
   /** Opens this exercise's history across every template (TRN-5). */
   onOpenHistory?: (exerciseId: string) => void;
   onToggle: (templateExerciseId: string) => void;
@@ -24,6 +27,9 @@ export function ExerciseCard({ model, steppers = true, onOpenHistory, onToggle, 
   onDirectEntry: (chipKey: string, field: DirectEntryField) => void;
 }) {
   const focus = model.chips.find((chip) => chip.setId === null && chip.kind !== 'warmup');
+  // The chip block's y is relative to the card body, and the body's to the card: both are needed.
+  const offsets = useRef({ body: 0, block: 0 });
+  const reportFocus = () => onFocusLayout?.(offsets.current.body + offsets.current.block);
   const headerLabel = `${model.name}, ${model.prescriptionText}, ${model.progressText}${model.complete ? ', done' : ''}`;
   return (
     <View className={`rounded-lg border bg-surface ${model.expanded ? 'border-accent' : 'border-line-soft'}`}>
@@ -40,7 +46,7 @@ export function ExerciseCard({ model, steppers = true, onOpenHistory, onToggle, 
         </View>
       </Pressable>
       {model.expanded && (
-        <View className="gap-4 px-4 pb-4">
+        <View onLayout={({ nativeEvent }) => { offsets.current.body = nativeEvent.layout.y; reportFocus(); }} className="gap-4 px-4 pb-4">
           {model.reasonLine && <Text className="text-base text-muted">{model.reasonLine}</Text>}
           {onOpenHistory && (
             <Pressable accessibilityRole="button" accessibilityLabel={`${model.name} history`} accessibilityHint="Opens every session with this exercise"
@@ -49,7 +55,8 @@ export function ExerciseCard({ model, steppers = true, onOpenHistory, onToggle, 
             </Pressable>
           )}
           {model.chips.map((chip) => (
-            <View key={chip.key} className="gap-2">
+            <View key={chip.key} className="gap-2"
+              onLayout={chip === focus ? ({ nativeEvent }) => { offsets.current.block = nativeEvent.layout.y; reportFocus(); } : undefined}>
               <View className="flex-row flex-wrap items-center gap-x-3">
                 <Text className="text-base text-muted">{chip.label}</Text>
                 {chip.failedSet && <Text className="text-base text-muted">Failed Set</Text>}
