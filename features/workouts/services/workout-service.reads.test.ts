@@ -90,6 +90,11 @@ describe('session and summary reads', () => {
     expect(nextTimeLine).toBe('Bench Press moves to 62.5 × 6; Back Squat repeats 80 kg');
   });
 
+  test('after an exercise\'s first session the next-time line says where to start, not "repeats"', async () => {
+    const session = await run('push', t0, { 'push-squat': [[80, 8], [80, 8], [80, 7]] });
+    expect((await svc.readSummary(session.id)).nextTimeLine).toBe('Back Squat: start next time at 80 kg × 9');
+  });
+
   test('readSession reports Recommended Sets and last sets per exercise from earlier finished sessions', async () => {
     await run('push', t0 - 7 * day, { 'push-bench': [[60, 8], [60, 9], [60, 7]] });
     clock.set(t0);

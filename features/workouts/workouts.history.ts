@@ -46,7 +46,9 @@ export function progressionHistory(sessions: readonly SessionWithSets[], templat
     });
 }
 
-export function toNextTimeOutcome(outcome: ProgressionOutcome, exerciseName: string): NextTimeOutcome {
+/** `firstSession`: this is the exercise's first counted session, so there is nothing yet to "repeat". */
+export function toNextTimeOutcome(outcome: ProgressionOutcome, exerciseName: string, firstSession = false): NextTimeOutcome {
+  if (firstSession && outcome.type === 'repeat') return { exerciseName, kind: 'firstUse', loadKg: outcome.loadKg, reps: outcome.reps, failedSets: 0 };
   switch (outcome.type) {
     case 'progress': return { exerciseName, kind: 'progress', loadKg: outcome.loadKg, reps: outcome.reps, failedSets: 0 };
     case 'load-reset': return { exerciseName, kind: 'loadReset', loadKg: outcome.loadKg, reps: outcome.reps, failedSets: 0 };

@@ -144,16 +144,16 @@ describe('nextTimeLine', () => {
     ])).toBe('Push-up moves to 11 reps; Pull-up repeats 8 reps after 1 Failed Set');
   });
 
-  test('first-use exercises have no recommendation and are left out', () => {
+  test('a first session says where to start next time instead of "repeats"', () => {
     expect(nextTimeLine([
-      outcome({ exerciseName: 'Bench', kind: 'firstUse', loadKg: null }),
+      outcome({ exerciseName: 'Bench', kind: 'firstUse', loadKg: 62.5, reps: 7 }),
+      outcome({ exerciseName: 'Push-up', kind: 'firstUse', loadKg: null, reps: 8 }),
       outcome({ exerciseName: 'Row', kind: 'progress', loadKg: 62.5, reps: 6 }),
-    ])).toBe('Row moves to 62.5 × 6');
+    ])).toBe('Bench: start next time at 62.5 kg × 7; Push-up: start next time at 8 reps; Row moves to 62.5 × 6');
   });
 
   test('is null when no exercise has an outcome to report', () => {
     expect(nextTimeLine([])).toBeNull();
-    expect(nextTimeLine([outcome({ exerciseName: 'Bench', kind: 'firstUse', loadKg: null })])).toBeNull();
   });
 
   test('keeps the order it is given, so the line is deterministic', () => {

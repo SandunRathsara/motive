@@ -397,7 +397,7 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
       if (!session.sets.some((set) => set.templateExerciseId === templateExercise.id && set.type === 'working')) continue;
       const progress = exerciseProgress(session, finished, templateExercise, true);
       if (progress.outcome?.sessionId !== session.id) continue;
-      outcomes.push(toNextTimeOutcome(progress.outcome, getExerciseById(templateExercise.exerciseId)?.name ?? templateExercise.exerciseId));
+      outcomes.push(toNextTimeOutcome(progress.outcome, getExerciseById(templateExercise.exerciseId)?.name ?? templateExercise.exerciseId, progress.sessionCount === 1));
     }
     const neighbours = all.filter((other) => Math.abs(other.startedAt - session.startedAt) <= DAY);
     const end = session.endedAt ?? now();
