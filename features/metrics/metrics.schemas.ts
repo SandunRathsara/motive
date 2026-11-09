@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-const timedType = z.enum(['food_active_input', 'recognition_wait', 'set_logging']);
+/** `set_logging` is one per set commit; `set_edit` is an edit after save, counted but kept out of medians (§10b). */
+const timedType = z.enum(['food_active_input', 'recognition_wait', 'set_logging', 'set_edit']);
 /** Current Gate Metrics vocabulary, in display order. Later slices append event types. */
 export const metricEventTypes = [...timedType.options, 'unclean_exit'] as const;
 export type MetricEventType = typeof metricEventTypes[number];

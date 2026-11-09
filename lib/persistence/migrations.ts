@@ -122,4 +122,53 @@ INSERT INTO exercise_library (id, name, muscle_group, equipment, bodyweight, lib
 ('crunch', 'Crunch', 'core', 'none', 1, 1),
 ('reverse-crunch', 'Reverse Crunch', 'core', 'none', 1, 1),
 ('cable-crunch', 'Cable Crunch', 'core', 'cable', 0, 1);`,
+}, {
+  version: 4,
+  // Slice 5. No FK to plan state: Template Exercises live in plan JSON, so their ids are plain text.
+  // gate_metric is rebuilt only to widen its event_type CHECK with 'set_edit' (SQLite cannot alter a CHECK).
+  sql: `CREATE TABLE workout_session (
+  id TEXT PRIMARY KEY NOT NULL,
+  template_id TEXT NOT NULL,
+  started_at INTEGER NOT NULL,
+  ended_at INTEGER CHECK (ended_at IS NULL OR ended_at >= started_at),
+  completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+  deload INTEGER NOT NULL DEFAULT 0 CHECK (deload IN (0, 1)),
+  prescription_json TEXT NOT NULL,
+  CHECK (completed = 0 OR ended_at IS NOT NULL)
+);
+CREATE INDEX workout_session_started_at ON workout_session(started_at);
+CREATE UNIQUE INDEX workout_session_one_active ON workout_session((1)) WHERE ended_at IS NULL;
+CREATE TABLE set_entry (
+  id TEXT PRIMARY KEY NOT NULL,
+  session_id TEXT NOT NULL REFERENCES workout_session(id) ON DELETE CASCADE,
+  template_exercise_id TEXT NOT NULL,
+  exercise_id TEXT NOT NULL,
+  set_index INTEGER NOT NULL CHECK (set_index >= 0),
+  type TEXT NOT NULL CHECK (type IN ('working', 'warmup')),
+  load_kg REAL CHECK (load_kg IS NULL OR load_kg >= 0),
+  reps INTEGER NOT NULL CHECK (reps > 0),
+  committed_at INTEGER NOT NULL,
+  edited_at INTEGER
+);
+CREATE INDEX set_entry_session ON set_entry(session_id, template_exercise_id, set_index);
+CREATE INDEX set_entry_template_exercise ON set_entry(template_exercise_id);
+CREATE INDEX set_entry_exercise ON set_entry(exercise_id);
+CREATE TABLE progression_cache (
+  template_exercise_id TEXT PRIMARY KEY NOT NULL,
+  recommended_sets_json TEXT NOT NULL,
+  stall_json TEXT NOT NULL,
+  source_session_ids_json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE gate_metric_v4 (
+  id TEXT PRIMARY KEY NOT NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('food_active_input', 'recognition_wait', 'set_logging', 'set_edit', 'unclean_exit')),
+  duration_ms INTEGER CHECK (event_type != 'unclean_exit' OR duration_ms IS NULL),
+  build TEXT NOT NULL,
+  recorded_at INTEGER NOT NULL
+);
+INSERT INTO gate_metric_v4 SELECT id, event_type, duration_ms, build, recorded_at FROM gate_metric;
+DROP TABLE gate_metric;
+ALTER TABLE gate_metric_v4 RENAME TO gate_metric;
+CREATE INDEX gate_metric_recorded_at ON gate_metric(recorded_at);`,
 }];

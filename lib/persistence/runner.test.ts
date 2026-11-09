@@ -26,7 +26,8 @@ test('fresh install commits all tables, version, indexes and SQL constraints', a
   expect(snapshot).not.toHaveBeenCalled();
   expect(await schemaVersion(db)).toBe(migrations.length);
   expect((await schema(db)).map((row) => row.name)).toEqual([
-    'gate_metric_recorded_at', 'health_sample_type_start', 'exercise_library', 'gate_metric', 'health_sample', 'health_sync_anchor', 'plan_version', 'profile', 'signal_availability', 'starting_estimate',
+    'gate_metric_recorded_at', 'health_sample_type_start', 'set_entry_exercise', 'set_entry_session', 'set_entry_template_exercise', 'workout_session_one_active', 'workout_session_started_at',
+    'exercise_library', 'gate_metric', 'health_sample', 'health_sync_anchor', 'plan_version', 'profile', 'progression_cache', 'set_entry', 'signal_availability', 'starting_estimate', 'workout_session',
   ]);
   await db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['id', 'unclean_exit', null, '1+1', 1]);
   await expect(db.run('INSERT INTO gate_metric VALUES (?, ?, ?, ?, ?)', ['bad', 'unclean_exit', 3, '1+1', 1])).rejects.toThrow();

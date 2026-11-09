@@ -16,7 +16,7 @@ import type { ShareAdapter } from './share';
 
 const build = { variant: 'verification', version: '1.0.0', buildNumber: '2', buildId: '1.0.0+2', gitTag: 'build/verification/1.0.0+2' } as const;
 const metricId = '11111111-1111-4111-8111-111111111111';
-const emptyCounts = { gateMetrics: 0, healthSignals: 0, profile: 0, plan: 0, exerciseLibrary: 0 };
+const emptyCounts = { gateMetrics: 0, healthSignals: 0, profile: 0, plan: 0, exerciseLibrary: 0, trainingLog: 0 };
 const onboardingInput = {
   sex: 'male', age: 30, heightCm: 180, activityLevel: 1.5, weightKg: 80,
   weightOrigin: { kind: 'health', sampleTime: Date.parse('2026-11-07T18:30:00Z'), sourceName: 'Scale' },
@@ -68,14 +68,15 @@ test('shares one validated snapshot with canonical metrics and local-date filena
   expect(await service().export()).toEqual({ ok: true, skippedCount: 0, skippedRowCounts: emptyCounts });
   expect(exportEnvelopeSchema.safeParse(captured).success).toBe(true);
   expect(captured).toEqual({
-    format: 'motive-personal-health-record', formatVersion: 1, schemaVersion: 3,
+    format: 'motive-personal-health-record', formatVersion: 1, schemaVersion: 4,
     exportedAt: '2026-11-08T01:30:00.000+05:30', build,
     canonicalUnits: { bodyMass: 'kg', length: 'cm', foodMass: 'g', volume: 'ml', energy: 'kcal', duration: 's', timestamp: 'ISO-8601 with offset' },
     sections: { gateMetrics: { version: 1, owner: 'metrics', records: [{
       id: '11111111-1111-4111-8111-111111111111', eventType: 'set_logging', durationS: 1.25, build: '1.0.0+1', recordedAt: '2026-11-08T00:00:00.000+05:30',
     }] }, healthSignals: { version: 1, owner: 'health', records: [] },
     profile: { version: 1, owner: 'profile', records: [] }, plan: { version: 1, owner: 'plan', records: [] },
-    exerciseLibrary: { version: 1, owner: 'workouts', records: exerciseLibrary.map((exercise) => ({ ...exercise, libraryVersion: exerciseLibraryVersion })).sort((a, b) => a.id.localeCompare(b.id)) } },
+    exerciseLibrary: { version: 1, owner: 'workouts', records: exerciseLibrary.map((exercise) => ({ ...exercise, libraryVersion: exerciseLibraryVersion })).sort((a, b) => a.id.localeCompare(b.id)) },
+    trainingLog: { version: 1, owner: 'workouts', records: [] } },
     skippedRowCounts: emptyCounts,
   });
   expect(share.share).toHaveBeenCalledWith({ uri: join(root, 'export-staging/motive-export-2026-11-08.json'), mimeType: 'application/json', uti: 'public.json', dialogTitle: 'Export Motive data' });
@@ -218,7 +219,7 @@ test('all sections and schema version share one snapshot while a queued relation
   ];
   expect((await service({ sections }).export()).ok).toBe(true);
   await queuedWrite;
-  expect(captured).toMatchObject({ schemaVersion: 3, sections: {
+  expect(captured).toMatchObject({ schemaVersion: 4, sections: {
     before: { records: [{ id: '11111111-1111-4111-8111-111111111111', build: '1.0.0+1' }] },
     after: { records: [{ id: '11111111-1111-4111-8111-111111111111', build: '1.0.0+1' }] },
   } });

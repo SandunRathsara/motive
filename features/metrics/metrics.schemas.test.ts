@@ -1,6 +1,6 @@
 import { metricEventSchema, metricRowSchema } from './metrics.schemas';
 
-test.each(['food_active_input', 'recognition_wait', 'set_logging'])('timed %s requires a nonnegative integer duration', (event_type) => {
+test.each(['food_active_input', 'recognition_wait', 'set_logging', 'set_edit'])('timed %s requires a nonnegative integer duration', (event_type) => {
   expect(metricEventSchema.safeParse({ event_type, duration_ms: 0 }).success).toBe(true);
   for (const duration_ms of [-1, 0.1, null, undefined]) {
     expect(metricEventSchema.safeParse({ event_type, duration_ms }).success).toBe(false);

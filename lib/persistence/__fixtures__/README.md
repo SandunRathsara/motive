@@ -10,3 +10,8 @@ from migration 1. `recorded_at` stores UTC Unix epoch milliseconds.
 Migration 2 adds the health cache, availability and anchors. `schema-v2.sql` was
 captured from a fresh database at its first tagged build,
 `build/verification/1.0.0+10` (persistence code identical to that tag).
+
+Migration 3 adds the profile, plan versions and the seeded exercise library.
+`schema-v3.sql` was captured from a fresh database built by migrations 1–3,
+persistence code identical to `build/verification/1.0.0+13`. It was captured
+during slice 5, before migration 4, with the same procedure as the earlier fixtures.
