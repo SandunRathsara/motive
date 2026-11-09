@@ -85,7 +85,7 @@ const target = (outcome: NextTimeOutcome) => outcome.loadKg === null ? plural(ou
 
 function describe(outcome: NextTimeOutcome): string | null {
   switch (outcome.kind) {
-    case 'firstUse': return null;
+    case 'firstUse': return `${outcome.exerciseName}: start next time at ${outcome.loadKg === null ? plural(outcome.reps, 'rep') : `${round(outcome.loadKg)} kg × ${outcome.reps}`}`;
     case 'progress': return `${outcome.exerciseName} moves to ${target(outcome)}`;
     case 'loadReset': return `${outcome.exerciseName} resets to ${target(outcome)}`;
     case 'repeat': {

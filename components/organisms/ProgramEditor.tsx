@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useForm, useStore } from '@tanstack/react-form';
 import type {
-  ExerciseLibraryEntry, ProgramDraft, ProgramDraftTools, ProgramDraftValidation, ProgramEditorViewModel, SaveProgramResult,
+  ExerciseLibraryEntry, ProgramDraft, ProgramDraftTools, ProgramEditorViewModel, SaveProgramResult,
   SessionTemplate, TemplateExercise,
 } from '@/features/workouts';
 import { ActionButton } from '@/components/atoms/ActionButton';
@@ -16,20 +16,6 @@ type Outcome = { kind: 'saved'; changed: boolean } | { kind: 'failed' } | null;
 const noun = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 const sectionTitle = 'text-xl font-semibold text-text';
 const fieldBox = 'min-h-14 rounded-sm border border-line bg-surface px-4 py-3 text-lg text-text';
-
-function move<T>(items: readonly T[], index: number, direction: -1 | 1): T[] {
-  const target = index + direction;
-  if (target < 0 || target >= items.length) return [...items];
-  const next = [...items];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
-}
-
-function patchExercise(exercise: TemplateExercise, patch: Partial<TemplateExercise>): TemplateExercise {
-  const next = { ...exercise, ...patch };
-  if (next.restOverrideSeconds === undefined) delete next.restOverrideSeconds;
-  return next;
-}
 
 function SmallButton({ label, onPress, disabled = false, destructive = false, text }: {
   label: string; onPress: () => void; disabled?: boolean; destructive?: boolean; text?: string;
@@ -74,10 +60,10 @@ function ExercisePicker({ library, onPick, onClose }: {
   );
 }
 
-function ExerciseEditor({ exercise, entry, expanded, first, last, defaultRestSeconds, errors, path, onToggle, onChange, onMove, onRemove }: {
+function ExerciseEditor({ exercise, entry, expanded, first, last, defaultRestSeconds, errors, path, onToggle, onChange, onRestChange, onMove, onRemove }: {
   exercise: TemplateExercise; entry: ExerciseLibraryEntry | undefined; expanded: boolean; first: boolean; last: boolean;
   defaultRestSeconds: number; errors: Record<string, string>; path: string; onToggle: () => void;
-  onChange: (patch: Partial<TemplateExercise>) => void; onMove: (direction: -1 | 1) => void; onRemove: () => void;
+  onChange: (patch: Partial<TemplateExercise>) => void; onRestChange: (seconds: number | undefined) => void; onMove: (direction: -1 | 1) => void; onRemove: () => void;
 }) {
   const name = entry?.name ?? exercise.exerciseId;
   const bodyweight = entry?.bodyweight ?? false;
@@ -103,9 +89,8 @@ function ExerciseEditor({ exercise, entry, expanded, first, last, defaultRestSec
         {!bodyweight && <CountStepper label="Increment" unit="kg" value={exercise.incrementKg} step={0.5} min={0} max={25}
           onChange={(incrementKg) => onChange({ incrementKg })} />}
         <CountStepper label="Rest" unit="second" unitPlural="seconds" value={rest} step={15} min={15} max={600}
-          valueText={exercise.restOverrideSeconds === undefined ? `${rest} s default` : undefined}
-          onChange={(next) => onChange({ restOverrideSeconds: next === defaultRestSeconds ? undefined : next })} />
-        {exercise.restOverrideSeconds !== undefined && <SmallButton label="Use default rest" onPress={() => onChange({ restOverrideSeconds: undefined })} />}
+          valueText={exercise.restOverrideSeconds === undefined ? `${rest} s default` : undefined} onChange={onRestChange} />
+        {exercise.restOverrideSeconds !== undefined && <SmallButton label="Use default rest" onPress={() => onRestChange(undefined)} />}
         {fieldErrors.map((text, index) => <ErrorText key={index} text={text} />)}
         <View className="flex-row flex-wrap gap-2">
           <SmallButton label={`Move ${name} up`} text="Up" disabled={first} onPress={() => onMove(-1)} />
@@ -119,14 +104,13 @@ function ExerciseEditor({ exercise, entry, expanded, first, last, defaultRestSec
 
 /**
  * S6 form: the weekly target, the rotation of Session Templates and each template's exercises. Form state
- * is TanStack Form; validation and id creation come from the feature (`validate`, `tools`). One Save is one
+ * is TanStack Form; validation, ids and the editing rules come from the feature (`tools`). One Save is one
  * *Your edit* Plan Version, and the owner is told plainly when nothing changed or nothing was saved.
  */
-export function ProgramEditor({ model, defaultRestSeconds, tools, validate, saving = false, errorText, onSave, onSaved }: {
+export function ProgramEditor({ model, defaultRestSeconds, tools, saving = false, errorText, onSave, onSaved }: {
   model: ReadyModel;
   defaultRestSeconds: number;
   tools: ProgramDraftTools;
-  validate: (draft: ProgramDraft) => ProgramDraftValidation;
   onSave: (draft: ProgramDraft) => Promise<SaveProgramResult>;
   saving?: boolean;
   /** Calm "not saved" copy from the hook for a failed commit. */
@@ -141,7 +125,7 @@ export function ProgramEditor({ model, defaultRestSeconds, tools, validate, savi
 
   const form = useForm({
     defaultValues: model.draft,
-    validators: { onSubmit: ({ value }) => (validate(value).valid ? undefined : 'Check the items marked below.') },
+    validators: { onSubmit: ({ value }) => (tools.validate(value).valid ? undefined : 'Check the items marked below.') },
     onSubmit: async ({ value }) => {
       const result = await onSave(value);
       if (result.saved) { setOutcome({ kind: 'saved', changed: result.changed }); onSaved?.(result.changed); } else setOutcome({ kind: 'failed' });
@@ -149,7 +133,7 @@ export function ProgramEditor({ model, defaultRestSeconds, tools, validate, savi
   });
   const values = useStore(form.store, (state) => state.values);
   const rotation = values.trainingProgram.rotation;
-  const validation = validate(values);
+  const validation = tools.validate(values);
   const errors = attempted ? validation.errors : {};
   const byId = new Map(model.library.map((entry) => [entry.id, entry]));
   const targetBounds = { min: Math.min(...model.weeklyTargetOptions), max: Math.max(...model.weeklyTargetOptions) };
@@ -161,9 +145,12 @@ export function ProgramEditor({ model, defaultRestSeconds, tools, validate, savi
   const editTemplate = (templateId: string, change: (template: SessionTemplate) => SessionTemplate) =>
     edit((program) => ({ ...program, rotation: program.rotation.map((template) => (template.id === templateId ? change(template) : template)) }));
 
+  const editExercise = (templateId: string, exerciseId: string, change: (exercise: TemplateExercise) => TemplateExercise) =>
+    editTemplate(templateId, (template) => ({ ...template, exercises: template.exercises.map((item) => (item.id === exerciseId ? change(item) : item)) }));
+
   const submit = () => {
     setAttempted(true);
-    const current = validate(form.state.values);
+    const current = tools.validate(form.state.values);
     if (!current.valid) {
       const failing = Object.keys(current.errors).map((key) => /^templates\.(\d+)/.exec(key)?.[1]).find((index) => index !== undefined);
       const template = failing === undefined ? undefined : form.state.values.trainingProgram.rotation[Number(failing)];
@@ -212,10 +199,9 @@ export function ProgramEditor({ model, defaultRestSeconds, tools, validate, savi
                       expanded={expandedExerciseId === exercise.id} first={exerciseIndex === 0} last={exerciseIndex === template.exercises.length - 1}
                       defaultRestSeconds={defaultRestSeconds} errors={errors} path={`templates.${templateIndex}.exercises.${exerciseIndex}`}
                       onToggle={() => setExpandedExerciseId(expandedExerciseId === exercise.id ? null : exercise.id)}
-                      onChange={(patch) => editTemplate(template.id, (current) => ({
-                        ...current, exercises: current.exercises.map((item) => (item.id === exercise.id ? patchExercise(item, patch) : item)),
-                      }))}
-                      onMove={(direction) => editTemplate(template.id, (current) => ({ ...current, exercises: move(current.exercises, exerciseIndex, direction) }))}
+                      onChange={(patch) => editExercise(template.id, exercise.id, (current) => ({ ...current, ...patch }))}
+                      onRestChange={(seconds) => editExercise(template.id, exercise.id, (current) => tools.withRest(current, seconds))}
+                      onMove={(direction) => editTemplate(template.id, (current) => ({ ...current, exercises: tools.move(current.exercises, exerciseIndex, direction) }))}
                       onRemove={() => editTemplate(template.id, (current) => ({ ...current, exercises: current.exercises.filter((item) => item.id !== exercise.id) }))} />
                   ))}
                   <ErrorText text={errors[`templates.${templateIndex}.exercises`]} />
@@ -230,9 +216,9 @@ export function ProgramEditor({ model, defaultRestSeconds, tools, validate, savi
                     : <SmallButton label={`Add exercise to ${label}`} text="Add exercise" onPress={() => setPickerTemplateId(template.id)} />}
                   <View className="flex-row flex-wrap gap-2">
                     <SmallButton label={`Move ${label} up in the rotation`} text="Up in rotation" disabled={templateIndex === 0}
-                      onPress={() => edit((program) => ({ ...program, rotation: move(program.rotation, templateIndex, -1) }))} />
+                      onPress={() => edit((program) => ({ ...program, rotation: tools.move(program.rotation, templateIndex, -1) }))} />
                     <SmallButton label={`Move ${label} down in the rotation`} text="Down in rotation" disabled={templateIndex === rotation.length - 1}
-                      onPress={() => edit((program) => ({ ...program, rotation: move(program.rotation, templateIndex, 1) }))} />
+                      onPress={() => edit((program) => ({ ...program, rotation: tools.move(program.rotation, templateIndex, 1) }))} />
                     <SmallButton label={`Delete ${label}`} text="Delete template" destructive
                       onPress={() => { edit((program) => ({ ...program, rotation: program.rotation.filter((item) => item.id !== template.id) })); setExpandedTemplateId(null); }} />
                   </View>

@@ -1,6 +1,7 @@
-import { blankTemplate, createProgramDraftTools, defaultIncrementKg, newTemplateExercise, validateProgramDraft, type ProgramDraft } from './workouts.program';
-import { trainingProgramSchema } from './workouts.schemas';
+import { blankTemplate, defaultIncrementKg, newTemplateExercise, programDraftTools, validateProgramDraft, type ProgramDraft } from './workouts.program';
+import { trainingProgramSchema, type TemplateExercise } from './workouts.schemas';
 import { starterTrainingProgram } from './workouts.content';
+import { defaultRestSeconds } from './workouts.history';
 
 const ids = () => { let n = 0; return () => `n${++n}`; };
 const draft = (overrides: Partial<ProgramDraft> = {}): ProgramDraft => ({ weeklySessionTarget: 3, trainingProgram: starterTrainingProgram, ...overrides });
@@ -51,7 +52,7 @@ test('a rest override must be a positive whole number of seconds', () => {
 });
 
 test('draft tools make templates and exercises with ids that do not collide', () => {
-  const tools = createProgramDraftTools();
+  const tools = programDraftTools;
   const entry = { id: 'leg-press', name: 'Leg Press', muscleGroup: 'quadriceps' as const, equipment: 'machine' as const, bodyweight: false };
   const first = tools.newTemplate('Legs');
   const second = tools.newTemplate('Legs');
@@ -64,10 +65,26 @@ test('draft tools make templates and exercises with ids that do not collide', ()
 });
 
 test('a program built with the draft tools passes validation and the stored schema', () => {
-  const tools = createProgramDraftTools();
+  const tools = programDraftTools;
   const entry = { id: 'leg-press', name: 'Leg Press', muscleGroup: 'quadriceps' as const, equipment: 'machine' as const, bodyweight: false };
   const template = tools.newTemplate('Legs');
   const program = { rotation: [{ ...template, exercises: [tools.newExercise(template.id, entry)] }] };
   expect(validateProgramDraft({ weeklySessionTarget: 3, trainingProgram: program }).valid).toBe(true);
   expect(trainingProgramSchema.safeParse(program).success).toBe(true);
+});
+
+test('move swaps with a neighbour and ignores moves off either end', () => {
+  const { move } = programDraftTools;
+  expect(move(['a', 'b', 'c'], 1, -1)).toEqual(['b', 'a', 'c']);
+  expect(move(['a', 'b', 'c'], 1, 1)).toEqual(['a', 'c', 'b']);
+  expect(move(['a', 'b', 'c'], 0, -1)).toEqual(['a', 'b', 'c']);
+  expect(move(['a', 'b', 'c'], 2, 1)).toEqual(['a', 'b', 'c']);
+});
+
+test('a rest equal to the default is stored as no override', () => {
+  const base: TemplateExercise = { id: 'e', exerciseId: 'back-squat', workingSets: 3, repRange: { min: 6, max: 10 }, incrementKg: 2.5 };
+  const { withRest } = programDraftTools;
+  expect(withRest(base, 120)).toEqual({ ...base, restOverrideSeconds: 120 });
+  expect(withRest({ ...base, restOverrideSeconds: 120 }, defaultRestSeconds)).toEqual(base);
+  expect('restOverrideSeconds' in withRest({ ...base, restOverrideSeconds: 120 }, undefined)).toBe(false);
 });

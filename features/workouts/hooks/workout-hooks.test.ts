@@ -157,6 +157,21 @@ describe('useActiveSession', () => {
     expect(result.current.errorText).toBeUndefined();
   });
 
+  test('a failed set can be edited with the steppers before it is retried (DATA-2)', async () => {
+    service.readSession.mockResolvedValue(detail());
+    service.logSet.mockRejectedValueOnce(new WorkoutsError('writeFailed'))
+      .mockResolvedValueOnce({ set: set(0, 82.5, 7), undo: { kind: 'deleteSet', setId: 'set-0' } });
+    const { result } = await renderHook(() => useActiveSession('s1'), { wrapper });
+    await waitFor(() => expect(result.current.model.status).toBe('ready'));
+    const firstChip = () => (result.current.model as { exercises: { chips: { saveState: string; loadKg: number | null; reps: number }[] }[] }).exercises[0].chips[0];
+    await act(async () => { await result.current.actions.logChip('sq:0'); });
+    expect(firstChip()).toMatchObject({ saveState: 'failed', loadKg: 80, reps: 9 });
+    await act(async () => { await result.current.actions.adjust('sq:0', { loadKg: 82.5, reps: 7 }); });
+    expect(firstChip()).toMatchObject({ saveState: 'failed', loadKg: 82.5, reps: 7 });
+    await act(async () => { expect(await result.current.actions.logChip('sq:0')).toBe(true); });
+    expect(service.logSet).toHaveBeenLastCalledWith(expect.objectContaining({ loadKg: 82.5, reps: 7 }));
+  });
+
   test('a stepper draft is what gets logged; a chip without a load is not loggable', async () => {
     service.readSession.mockResolvedValue(detail([], null));
     service.logSet.mockResolvedValue({ set: set(0, 60, 6), undo: { kind: 'deleteSet', setId: 'set-0' } });

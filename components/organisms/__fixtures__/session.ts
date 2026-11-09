@@ -54,6 +54,6 @@ export function actions(overrides: Partial<ActiveSessionActions> = {}): jest.Moc
     touch: jest.fn(), expand: jest.fn(), adjust: jest.fn(async () => true), logChip: jest.fn(async () => true),
     logSet: jest.fn(async () => true), editSet: jest.fn(async () => true), deleteSet: jest.fn(async () => true),
     finish: jest.fn(async () => 'session-1'), deleteSession: jest.fn(async () => true), addThirtySeconds: jest.fn(), skipRest: jest.fn(),
-    now: jest.fn(() => 1_000_000 + 754_000), ...overrides,
+    ...overrides,
   } as jest.Mocked<ActiveSessionActions>;
 }

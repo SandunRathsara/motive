@@ -90,6 +90,11 @@ describe('session and summary reads', () => {
     expect(nextTimeLine).toBe('Bench Press moves to 62.5 × 6; Back Squat repeats 80 kg');
   });
 
+  test('after an exercise\'s first session the next-time line says where to start, not "repeats"', async () => {
+    const session = await run('push', t0, { 'push-squat': [[80, 8], [80, 8], [80, 7]] });
+    expect((await svc.readSummary(session.id)).nextTimeLine).toBe('Back Squat: start next time at 80 kg × 9');
+  });
+
   test('readSession reports Recommended Sets and last sets per exercise from earlier finished sessions', async () => {
     await run('push', t0 - 7 * day, { 'push-bench': [[60, 8], [60, 9], [60, 7]] });
     clock.set(t0);
@@ -171,5 +176,7 @@ describe('exposed to later slices', () => {
     expect(week).toMatchObject({ completedSessions: 2, workingSets: 5, volumeKg: 60 * 10 * 3 + 40 * 10 * 2 });
     expect(week.sessions.map((entry) => entry.templateName)).toEqual(['Push', 'Pull']);
     expect(week.setsByMuscleGroup).toEqual([{ muscleGroup: 'chest', sets: 3 }, { muscleGroup: 'back', sets: 2 }]);
+    expect(week.sessions[1].sets.map(({ exerciseId, type, index, loadKg, reps }) => ({ exerciseId, type, index, loadKg, reps })))
+      .toEqual([{ exerciseId: 'lat-pulldown', type: 'working', index: 0, loadKg: 40, reps: 10 }, { exerciseId: 'lat-pulldown', type: 'working', index: 1, loadKg: 40, reps: 10 }]);
   });
 });

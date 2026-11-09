@@ -1,12 +1,9 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { AccessibilityInfo, Pressable, Text, View } from 'react-native';
+import { clock } from '@/components/molecules/clock';
 
 const SEGMENTS = 10;
 const TICK_MS = 250;
-
-function clock(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-}
 
 function spokenRemaining(seconds: number): string {
   const minutes = Math.floor(seconds / 60);

@@ -1,3 +1,4 @@
+import { defaultRestSeconds } from './workouts.history';
 import type { ExerciseLibraryEntry, SessionTemplate, TemplateExercise, TrainingProgram } from './workouts.schemas';
 
 /** What the Training Program editor (S6) edits and saves as one *Your edit* Plan Version (D5). */
@@ -24,24 +25,42 @@ export function blankTemplate(name: string, newId: () => string): SessionTemplat
 }
 
 /**
- * What the editor needs to grow a draft. The feature owns id generation so components never reach for
- * randomness; ids only have to be unique inside the program (Hermes has no Web Crypto assumption).
+ * What the editor needs to change a draft. The feature owns id generation and the editing rules so
+ * components never reach for randomness or business rules; ids only have to be unique inside the
+ * program (Hermes has no Web Crypto assumption).
  */
 export interface ProgramDraftTools {
   newTemplate(name: string): SessionTemplate;
   newExercise(templateId: string, exercise: ExerciseLibraryEntry): TemplateExercise;
+  /** Swaps the item at `index` with its neighbour; out-of-range moves leave the order unchanged. */
+  move<T>(items: readonly T[], index: number, direction: -1 | 1): T[];
+  /** Rest between sets: the default is stored as "no override" so a later default change still applies. */
+  withRest(exercise: TemplateExercise, seconds: number | undefined): TemplateExercise;
+  validate(draft: ProgramDraft): ProgramDraftValidation;
 }
 
 const randomId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-export function createProgramDraftTools(newId: () => string = randomId): ProgramDraftTools {
-  return {
-    newTemplate: (name) => blankTemplate(name, newId),
-    newExercise: (templateId, exercise) => newTemplateExercise(templateId, exercise, newId),
-  };
+function move<T>(items: readonly T[], index: number, direction: -1 | 1): T[] {
+  const target = index + direction;
+  const next = [...items];
+  if (target < 0 || target >= items.length) return next;
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
 }
 
-export const programDraftTools: ProgramDraftTools = createProgramDraftTools();
+function withRest(exercise: TemplateExercise, seconds: number | undefined): TemplateExercise {
+  const { restOverrideSeconds: _previous, ...rest } = exercise;
+  return seconds === undefined || seconds === defaultRestSeconds ? rest : { ...rest, restOverrideSeconds: seconds };
+}
+
+export const programDraftTools: ProgramDraftTools = {
+  newTemplate: (name) => blankTemplate(name, randomId),
+  newExercise: (templateId, exercise) => newTemplateExercise(templateId, exercise, randomId),
+  move,
+  withRest,
+  validate: validateProgramDraft,
+};
 
 export interface ProgramDraftValidation {
   valid: boolean;

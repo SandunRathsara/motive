@@ -18,5 +18,5 @@ export { useTodayTrendLine } from './hooks/useTodayTrendLine';
 export { useHealthRefresh } from './hooks/useHealthRefresh';
 export { useConnectHealth } from './hooks/useConnectHealth';
 export { useDeleteSignalHistory } from './hooks/useDeleteSignalHistory';
-export { signalTitles } from './health.view-models';
+export { signalTitles, workoutActivityName } from './health.view-models';
 export type { SignalsViewModel, SignalDetailViewModel, TodayTrendLineViewModel } from './health.types';

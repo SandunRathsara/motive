@@ -397,7 +397,7 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
       if (!session.sets.some((set) => set.templateExerciseId === templateExercise.id && set.type === 'working')) continue;
       const progress = exerciseProgress(session, finished, templateExercise, true);
       if (progress.outcome?.sessionId !== session.id) continue;
-      outcomes.push(toNextTimeOutcome(progress.outcome, getExerciseById(templateExercise.exerciseId)?.name ?? templateExercise.exerciseId));
+      outcomes.push(toNextTimeOutcome(progress.outcome, getExerciseById(templateExercise.exerciseId)?.name ?? templateExercise.exerciseId, progress.sessionCount === 1));
     }
     const neighbours = all.filter((other) => Math.abs(other.startedAt - session.startedAt) <= DAY);
     const end = session.endedAt ?? now();
@@ -465,11 +465,14 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
     const perSession = sessions.map((session) => ({
       sessionId: session.id, templateId: session.templateId, templateName: session.prescription.templateName,
       startedAt: session.startedAt, day: dayKey(session.startedAt, offsetAt),
-      completed: session.completed, deload: session.deload, ...summarizeSession(session, getExerciseById),
+      completed: session.completed, deload: session.deload, ...summarizeSession(session, getExerciseById), sets: session.sets,
     }));
     const total = summarizeSession({ sets: sessions.flatMap((session) => session.sets) }, getExerciseById);
     return { from, to: at, completedSessions: sessions.filter((session) => session.completed).length, ...total, sessions: perSession };
   }
+
+  /** Starts a Deload session: same recommended loads, working sets halved per exercise (rounded up); excluded from progression (slice 6). */
+  const startDeloadSession = (templateId: string) => startSession(templateId, { deload: true });
 
   /** Fires when the user edits the weekly target, for Plan Change supersession (PLAN-3). */
   function onWeeklyTargetEdited(listener: (event: { from: number | null; to: number; versionNumber: number }) => void): () => void {
@@ -480,7 +483,7 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
   }
 
   return {
-    startSession, logSet, editSet, deleteSet, finishSession, deleteSession, undo, saveProgram,
+    startSession, startDeloadSession, logSet, editSet, deleteSet, finishSession, deleteSession, undo, saveProgram,
     readProgram, readToday, readOverview, readSession, readSummary, readExerciseHistory,
     programCreatedAt, closedWeekCounts, stallHistory, lastSevenDays, onWeeklyTargetEdited,
   };

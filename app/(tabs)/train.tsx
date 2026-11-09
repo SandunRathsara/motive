@@ -5,10 +5,12 @@ import { useTrainingWeek } from '@/features/workouts';
 export default function TrainRoute() {
   const router = useRouter();
   const week = useTrainingWeek();
-  const open = (sessionId: string | null) => { if (sessionId) router.push({ pathname: '/session/[id]', params: { id: sessionId } }); };
+
+  const openSession = (sessionId: string | null) => { if (sessionId) router.push({ pathname: '/session/[id]', params: { id: sessionId } }); };
+  const startTemplate = async (templateId: string) => openSession(await week.startTemplate(templateId));
+  const openSummary = (id: string) => router.push({ pathname: '/session/[id]/summary', params: { id } });
+
   return <TrainTemplate model={week.model} errorText={week.errorText}
-    onStartTemplate={(templateId) => { void week.startTemplate(templateId).then(open); }}
-    onResume={() => open(week.resume())}
-    onOpenSession={(id) => router.push({ pathname: '/session/[id]/summary', params: { id } })}
-    onEditProgram={() => router.push('/program')} />;
+    onStartTemplate={(templateId) => { void startTemplate(templateId); }}
+    onResume={() => openSession(week.resume())} onOpenSession={openSummary} onEditProgram={() => router.push('/program')} />;
 }

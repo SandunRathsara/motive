@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState } from 'react-native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { AppStateStatus } from 'react-native';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useActiveWorkout } from '@/store/active-workout';
 import { workoutService, type EditSetInput, type LogSetInput } from '../services/workout-service';
+import { defaultRestSeconds } from '../workouts.history';
 import type { SetType } from '../workouts.schemas';
 import { armSetTimer, backgroundSetTimer, endRest, foregroundSetTimer, setLoggingDurationMs, touchSetTimer } from '../workouts.timing';
 import { undoWindow } from '../workouts.undo';
 import {
-  buildActiveSession, buildSetSheet, workoutErrorText,
-  type ActiveSessionViewModel, type ChipDraft, type ChipPending, type SetSheetViewModel,
-} from '../workouts.view-models';
+  buildActiveSession, buildSetSheet, type ActiveSessionViewModel, type ChipDraft, type ChipPending, type SetSheetViewModel,
+} from '../workouts.session-view';
+import { workoutErrorText } from '../workouts.view-models';
 import { workoutKeys } from './query-keys';
 import { beginActiveSession } from './session-runtime';
+import { useAppStateChange, useDeleteSession, useRefreshWorkouts } from './shared';
 
 export interface ActiveSessionActions {
   /** Any touch on the session screen: the first one after a commit starts the set timer during rest (D1). */
@@ -34,13 +36,23 @@ export interface ActiveSessionActions {
   deleteSession(): Promise<boolean>;
   addThirtySeconds(): void;
   skipRest(): void;
-  /** Wall-clock provider for the rest bar. */
-  now(): number;
+}
+
+// Backgrounded time is excluded from the set timer (D1).
+function onAppStateChange(state: AppStateStatus) {
+  const store = useActiveWorkout.getState();
+  if (!store.setTimer) return;
+  store.setSetTimer(state === 'active' ? foregroundSetTimer(store.setTimer, Date.now()) : backgroundSetTimer(store.setTimer, Date.now()));
+}
+
+/** How long the owner took for this set, per D1: from when the chip became actionable, not counting rest. */
+function measureSetDuration(tappedAt: number): number {
+  const store = useActiveWorkout.getState();
+  return setLoggingDurationMs(store.setTimer ?? armSetTimer(tappedAt), tappedAt, store.restDeadline);
 }
 
 /** S3/S4: the active session (also used to correct a finished one, G9) with chips, rest and undo. */
 export function useActiveSession(sessionId: string) {
-  const client = useQueryClient();
   const query = useQuery({ queryKey: workoutKeys.session(sessionId), queryFn: () => workoutService.readSession(sessionId) });
   const expandedExerciseId = useActiveWorkout((state) => state.expandedExerciseId);
   const restDeadline = useActiveWorkout((state) => state.restDeadline);
@@ -55,22 +67,14 @@ export function useActiveSession(sessionId: string) {
     if (detail && detail.session.endedAt === null) beginActiveSession(detail.session);
   }, [detail?.session.id, detail?.session.endedAt, detail]);
 
-  // Backgrounded time is excluded from the set timer (D1).
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      const store = useActiveWorkout.getState();
-      if (!store.setTimer) return;
-      store.setSetTimer(state === 'active' ? foregroundSetTimer(store.setTimer, Date.now()) : backgroundSetTimer(store.setTimer, Date.now()));
-    });
-    return () => subscription.remove();
-  }, []);
+  useAppStateChange(onAppStateChange);
 
-  const refresh = () => client.invalidateQueries({ queryKey: workoutKeys.all });
+  const refresh = useRefreshWorkouts();
   const logMutation = useMutation({ mutationKey: workoutKeys.logSet, mutationFn: (input: LogSetInput) => workoutService.logSet(input), onSuccess: refresh });
   const editMutation = useMutation({ mutationKey: workoutKeys.editSet, mutationFn: (input: EditSetInput) => workoutService.editSet(input), onSuccess: refresh });
   const deleteSetMutation = useMutation({ mutationKey: workoutKeys.deleteSet, mutationFn: (setId: string) => workoutService.deleteSet(setId), onSuccess: refresh });
   const finishMutation = useMutation({ mutationKey: workoutKeys.finishSession, mutationFn: () => workoutService.finishSession(sessionId), onSuccess: refresh });
-  const deleteSessionMutation = useMutation({ mutationKey: workoutKeys.deleteSession, mutationFn: () => workoutService.deleteSession(sessionId), onSuccess: refresh });
+  const deleteSessionMutation = useDeleteSession();
 
   const rest = restDeadline !== null && restSeconds !== null ? { deadlineMs: restDeadline, durationSeconds: restSeconds } : null;
   const content = useMemo(
@@ -82,7 +86,7 @@ export function useActiveSession(sessionId: string) {
   const model: ActiveSessionViewModel = content ? { status: 'ready', ...content }
     : query.isError ? { status: 'error', retry: () => { void query.refetch(); } } : { status: 'loading' };
 
-  const find = useCallback((key: string) => {
+  const findChip = useCallback((key: string) => {
     for (const card of content?.exercises ?? []) {
       const chip = card.chips.find((candidate) => candidate.key === key);
       if (chip) return { card, chip };
@@ -96,13 +100,13 @@ export function useActiveSession(sessionId: string) {
   }, []);
 
   const afterCommit = useCallback((templateExerciseId: string, committedAt: number) => {
-    const rest = content?.exercises.find((card) => card.templateExerciseId === templateExerciseId)?.restSeconds ?? 90;
+    const rest = content?.exercises.find((card) => card.templateExerciseId === templateExerciseId)?.restSeconds ?? defaultRestSeconds;
     const store = useActiveWorkout.getState();
     store.startRest(committedAt + rest * 1000, rest);
     store.setSetTimer(armSetTimer(committedAt));
   }, [content]);
 
-  const run = useCallback(async <T,>(work: () => Promise<T>): Promise<T | null> => {
+  const attempt = useCallback(async <T,>(work: () => Promise<T>): Promise<T | null> => {
     try { setFailure(null); return await work(); } catch (error) { setFailure(error); return null; }
   }, []);
 
@@ -113,22 +117,20 @@ export function useActiveSession(sessionId: string) {
     },
     expand: (templateExerciseId) => useActiveWorkout.getState().expand(templateExerciseId),
     async adjust(key, values) {
-      const found = find(key);
+      const found = findChip(key);
       if (!found) return false;
       const next = { loadKg: values.loadKg !== undefined ? values.loadKg : found.chip.loadKg, reps: values.reps ?? found.chip.reps };
-      if (found.chip.setId) return (await run(() => editMutation.mutateAsync({ setId: found.chip.setId as string, ...next }))) !== null;
+      if (found.chip.setId) return (await attempt(() => editMutation.mutateAsync({ setId: found.chip.setId as string, ...next }))) !== null;
       setDrafts((current) => ({ ...current, [key]: next }));
       return true;
     },
     async logChip(key) {
-      const found = find(key);
+      const found = findChip(key);
       if (!found || found.chip.setId || found.chip.needsLoad || found.chip.saveState === 'saving' || !isActive) return false;
       const { chip } = found;
-      const tappedAt = Date.now();
-      const store = useActiveWorkout.getState();
-      const durationMs = setLoggingDurationMs(store.setTimer ?? armSetTimer(tappedAt), tappedAt, store.restDeadline);
+      const durationMs = measureSetDuration(Date.now());
       setPending((current) => ({ ...current, [key]: { status: 'saving', loadKg: chip.loadKg, reps: chip.reps } }));
-      const result = await run(() => logMutation.mutateAsync({
+      const result = await attempt(() => logMutation.mutateAsync({
         sessionId, templateExerciseId: chip.templateExerciseId, loadKg: chip.loadKg, reps: chip.reps, durationMs,
       }));
       if (!result) {
@@ -142,10 +144,8 @@ export function useActiveSession(sessionId: string) {
       return true;
     },
     async logSet(values) {
-      const tappedAt = Date.now();
-      const store = useActiveWorkout.getState();
-      const durationMs = setLoggingDurationMs(store.setTimer ?? armSetTimer(tappedAt), tappedAt, store.restDeadline);
-      const result = await run(() => logMutation.mutateAsync({ sessionId, durationMs, ...values }));
+      const durationMs = measureSetDuration(Date.now());
+      const result = await attempt(() => logMutation.mutateAsync({ sessionId, durationMs, ...values }));
       if (!result) return false;
       clearDrafts(values.templateExerciseId);
       if (isActive) afterCommit(values.templateExerciseId, result.set.committedAt);
@@ -153,10 +153,10 @@ export function useActiveSession(sessionId: string) {
       return true;
     },
     async editSet(setId, values) {
-      return (await run(() => editMutation.mutateAsync({ setId, ...values }))) !== null;
+      return (await attempt(() => editMutation.mutateAsync({ setId, ...values }))) !== null;
     },
     async deleteSet(setId) {
-      const result = await run(() => deleteSetMutation.mutateAsync(setId));
+      const result = await attempt(() => deleteSetMutation.mutateAsync(setId));
       if (!result) return false;
       const owner = content?.exercises.find((card) => card.chips.some((chip) => chip.setId === setId));
       if (owner) clearDrafts(owner.templateExerciseId);
@@ -164,17 +164,13 @@ export function useActiveSession(sessionId: string) {
       return true;
     },
     async finish() {
-      const finished = await run(() => finishMutation.mutateAsync());
+      const finished = await attempt(() => finishMutation.mutateAsync());
       if (!finished) return null;
       useActiveWorkout.getState().end();
       return finished.id;
     },
     async deleteSession() {
-      const result = await run(() => deleteSessionMutation.mutateAsync());
-      if (!result) return false;
-      if (useActiveWorkout.getState().activeSessionId === sessionId) useActiveWorkout.getState().end();
-      undoWindow.offer(result.undo, 'Session deleted');
-      return true;
+      return (await attempt(() => deleteSessionMutation.mutateAsync(sessionId))) !== null;
     },
     addThirtySeconds: () => useActiveWorkout.getState().addRest(30_000),
     skipRest() {
@@ -182,14 +178,13 @@ export function useActiveSession(sessionId: string) {
       if (store.setTimer) store.setSetTimer(endRest(store.setTimer, Date.now()));
       store.skipRest();
     },
-    now: () => Date.now(),
   };
 
   /** S4: the sheet for one chip (non-blocking; the session stays interactive behind it). */
   const sheet = useCallback((chipKey: string): SetSheetViewModel | null => {
-    const found = find(chipKey);
+    const found = findChip(chipKey);
     return found ? buildSetSheet(found.card, found.chip) : null;
-  }, [find]);
+  }, [findChip]);
 
   return { model, actions, sheet, errorText: workoutErrorText(failure) };
 }
