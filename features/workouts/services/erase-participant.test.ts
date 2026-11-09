@@ -1,5 +1,6 @@
 import { workoutsEraseParticipant } from './erase-participant';
 import { requireRecord } from '@/lib/persistence';
+import { useActiveWorkout } from '@/store/active-workout';
 
 jest.mock('@/lib/persistence', () => ({ ...jest.requireActual('@/lib/persistence'), requireRecord: jest.fn() }));
 
@@ -15,8 +16,12 @@ test('quiesce drains pending record writes and tolerates a record that is not op
   await expect(workoutsEraseParticipant.quiesce()).rejects.toThrow('boom');
 });
 
-test('holds no in-memory state of its own, so it is always clear', async () => {
+test('reset clears the active-workout store and isClear reports it', async () => {
+  useActiveWorkout.getState().begin('session-1', 'te-1');
+  useActiveWorkout.getState().startRest(1_000, 90);
+  expect(await workoutsEraseParticipant.isClear()).toBe(false);
   await workoutsEraseParticipant.reset();
+  expect(useActiveWorkout.getState()).toMatchObject({ activeSessionId: null, restDeadline: null, expandedExerciseId: null, setTimer: null });
   expect(await workoutsEraseParticipant.isClear()).toBe(true);
   expect(workoutsEraseParticipant).toMatchObject({ key: 'workouts', owner: 'workouts' });
 });

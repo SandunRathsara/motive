@@ -25,3 +25,7 @@ export { summarizeSession, previousCompletedSession, compareWithPrevious, nextTi
 export type { SummarySet, SummarySession, ExerciseLookup, SessionSummary, SessionComparison, NextTimeOutcome } from './workouts.summary';
 export { linkWorkouts } from './workouts.linking';
 export type { LinkableSession, LinkableWorkout, WorkoutLink, WorkoutLinking } from './workouts.linking';
+export {
+  armSetTimer, touchSetTimer, endRest, backgroundSetTimer, foregroundSetTimer, setLoggingDurationMs,
+} from './workouts.timing';
+export type { SetTimer } from './workouts.timing';
