@@ -90,6 +90,11 @@ export function useActiveSession(sessionId: string) {
     return null;
   }, [content]);
 
+  // Chip slots shift after a log or a delete, so a draft left behind would reappear on another chip.
+  const clearDrafts = useCallback((templateExerciseId: string) => {
+    setDrafts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${templateExerciseId}:`))));
+  }, []);
+
   const afterCommit = useCallback((templateExerciseId: string, committedAt: number) => {
     const rest = content?.exercises.find((card) => card.templateExerciseId === templateExerciseId)?.restSeconds ?? 90;
     const store = useActiveWorkout.getState();
@@ -131,7 +136,7 @@ export function useActiveSession(sessionId: string) {
         return false;
       }
       setPending(({ [key]: _done, ...rest }) => rest);
-      setDrafts(({ [key]: _done, ...rest }) => rest);
+      clearDrafts(chip.templateExerciseId);
       afterCommit(chip.templateExerciseId, result.set.committedAt);
       undoWindow.offer(result.undo, 'Set logged');
       return true;
@@ -142,6 +147,7 @@ export function useActiveSession(sessionId: string) {
       const durationMs = setLoggingDurationMs(store.setTimer ?? armSetTimer(tappedAt), tappedAt, store.restDeadline);
       const result = await run(() => logMutation.mutateAsync({ sessionId, durationMs, ...values }));
       if (!result) return false;
+      clearDrafts(values.templateExerciseId);
       if (isActive) afterCommit(values.templateExerciseId, result.set.committedAt);
       undoWindow.offer(result.undo, 'Set logged');
       return true;
@@ -152,6 +158,8 @@ export function useActiveSession(sessionId: string) {
     async deleteSet(setId) {
       const result = await run(() => deleteSetMutation.mutateAsync(setId));
       if (!result) return false;
+      const owner = content?.exercises.find((card) => card.chips.some((chip) => chip.setId === setId));
+      if (owner) clearDrafts(owner.templateExerciseId);
       undoWindow.offer(result.undo, 'Set deleted');
       return true;
     },
