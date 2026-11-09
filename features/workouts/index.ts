@@ -48,8 +48,8 @@ export type { TrainingSettingsViewModel } from './hooks/useTrainingSettings';
 export { useUndo } from './hooks/useUndo';
 export type { UndoOffer } from './workouts.undo';
 export { defaultRestSeconds } from './workouts.history';
-export { defaultIncrementKg, newTemplateExercise, blankTemplate, validateProgramDraft } from './workouts.program';
-export type { ProgramDraft, ProgramDraftValidation } from './workouts.program';
+export { defaultIncrementKg, newTemplateExercise, blankTemplate, validateProgramDraft, createProgramDraftTools, programDraftTools } from './workouts.program';
+export type { ProgramDraft, ProgramDraftValidation, ProgramDraftTools } from './workouts.program';
 export { formatKg, formatSet, formatNumber } from './workouts.format';
 export { workoutErrorText } from './workouts.view-models';
 export type {

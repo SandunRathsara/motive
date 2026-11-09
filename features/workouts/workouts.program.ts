@@ -23,6 +23,26 @@ export function blankTemplate(name: string, newId: () => string): SessionTemplat
   return { id: `template-${newId()}`, name, exercises: [] };
 }
 
+/**
+ * What the editor needs to grow a draft. The feature owns id generation so components never reach for
+ * randomness; ids only have to be unique inside the program (Hermes has no Web Crypto assumption).
+ */
+export interface ProgramDraftTools {
+  newTemplate(name: string): SessionTemplate;
+  newExercise(templateId: string, exercise: ExerciseLibraryEntry): TemplateExercise;
+}
+
+const randomId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+export function createProgramDraftTools(newId: () => string = randomId): ProgramDraftTools {
+  return {
+    newTemplate: (name) => blankTemplate(name, newId),
+    newExercise: (templateId, exercise) => newTemplateExercise(templateId, exercise, newId),
+  };
+}
+
+export const programDraftTools: ProgramDraftTools = createProgramDraftTools();
+
 export interface ProgramDraftValidation {
   valid: boolean;
   /** Keyed by path, e.g. `templates.0.exercises.1.repRange`. */
