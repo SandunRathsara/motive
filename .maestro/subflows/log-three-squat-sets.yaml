@@ -1,0 +1,21 @@
+appId: dev.motive.app
+---
+# From a fresh active Full Body session (Back Squat expanded, first session: no load yet).
+# Sets the load with the steppers (8 × 2.5 kg = 20 kg), then logs all three squat sets with
+# one tap each: sets 2 and 3 carry the load forward.
+- repeat:
+    times: 8
+    commands:
+      - tapOn: "Increase load by 2.5 kilograms"
+- assertVisible:
+    id: "next-set-chip"
+    text: "20 kilograms, 6 reps"
+- tapOn:
+    id: "next-set-chip"
+- assertVisible: "1 of 14 sets"
+- tapOn:
+    id: "next-set-chip"
+- assertVisible: "2 of 14 sets"
+- tapOn:
+    id: "next-set-chip"
+- assertVisible: "3 of 14 sets"

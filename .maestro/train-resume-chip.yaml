@@ -1,0 +1,45 @@
+appId: dev.motive.app
+---
+# (a) UX-1: Today → Resume → one chip tap logs a Recommended Set, in at most 3 taps and with no keyboard.
+# Setup (not part of the asserted segment): finish session 1 so Back Squat has a Recommended Set, start
+# session 2, log one set, then relaunch so Today offers Resume for the session in progress.
+- launchApp:
+    clearState: true
+- runFlow: subflows/onboard.yaml
+- tapOn:
+    id: "quick-add-set"
+- assertVisible:
+    id: "active-session"
+- runFlow: subflows/log-three-squat-sets.yaml
+- runFlow: subflows/finish-session.yaml
+- tapOn: "Done"
+- tapOn:
+    id: "today-training-action"
+- assertVisible:
+    id: "next-set-chip"
+    text: ".*recommended.*"
+- tapOn:
+    id: "next-set-chip"
+- assertVisible: "1 of 14 sets"
+- launchApp
+# --- Asserted segment: at most 3 taps (this uses 2), no keyboard at any point. ---
+- assertVisible:
+    id: "today-training-action"
+    text: "Resume Full Body"
+- assertNotVisible:
+    id: "inputView"
+- tapOn:
+    id: "today-training-action"
+- assertVisible:
+    id: "next-set-chip"
+    text: ".*recommended.*"
+- assertNotVisible:
+    id: "inputView"
+- assertNotVisible:
+    id: "dictation"
+- tapOn:
+    id: "next-set-chip"
+- assertVisible: "2 of 14 sets"
+- assertNotVisible:
+    id: "inputView"
+# --- End of the asserted segment. ---

@@ -1,3 +1,4 @@
+import { ScrollView, type ScrollViewInstance } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ActiveSession } from './ActiveSession';
 import { actions as makeActions, card, chip, content, sheetModel } from './__fixtures__/session';
@@ -44,6 +45,21 @@ test('one tap on a chip logs it; stepper changes adjust the draft', async () => 
   expect(actions.logChip).toHaveBeenCalledWith('full-body-back-squat:1');
   await fireEvent.press(screen.getByRole('button', { name: 'Increase reps by 1 rep' }));
   expect(actions.adjust).toHaveBeenCalledWith('full-body-back-squat:1', { reps: 10 });
+});
+
+// The rest bar shrinks the docked panel after a log, which pushed the next chip out of view (found on the
+// simulator: the next chip sat under the rest bar). The panel follows the focus chip so it is always one tap away.
+const layout = (y: number) => ({ nativeEvent: { layout: { x: 0, y, width: 340, height: 70 } } });
+
+test('the docked exercise scrolls to the next chip, so it stays in view and one tap away', async () => {
+  await render(<ActiveSession content={content()} actions={makeActions()} sheet={() => null} onOpenHistory={jest.fn()} />);
+  // The React Native jest mock shares one jest.fn `scrollTo` across ScrollView instances.
+  const scrollTo = jest.mocked((ScrollView as unknown as { prototype: ScrollViewInstance }).prototype.scrollTo);
+  scrollTo.mockClear();
+  // Body of the card starts 64 below its top; the focus chip's block starts 120 into the body.
+  await fireEvent(screen.getByRole('button', { name: 'Back Squat history' }), 'layout', layout(64));
+  await fireEvent(screen.getByTestId('next-set-chip'), 'layout', layout(120));
+  expect(scrollTo).toHaveBeenLastCalledWith({ y: 184, animated: false });
 });
 
 test('any touch on the session is reported so the set timer can start after rest', async () => {
