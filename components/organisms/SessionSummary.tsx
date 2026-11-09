@@ -10,7 +10,7 @@ import type { SessionSummaryContent } from '@/features/workouts';
 export function SessionSummary({ content }: { content: SessionSummaryContent }) {
   const noVolume = content.volumeText === '—';
   return (
-    <View className="gap-6">
+    <View testID="session-summary" className="gap-6">
       <View className="gap-1">
         <Text accessibilityRole="header" className="text-2xl font-semibold text-text">{content.templateName}</Text>
         <Text className="text-base text-muted">{content.dateText}{content.durationText ? ` · ${content.durationText}` : ''}</Text>

@@ -14,7 +14,7 @@ type UndoProps = Parameters<typeof UndoToast>[0];
  * above; the bottom controls (undo toast, rest bar, Finish) stay in the thumb zone (UX-8). Nothing here
  * blocks: the rest bar and toast are in-layout, and logging continues during rest (UX-10, TRN-7).
  */
-export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, onFinish, onDone, onDeleteSession }: {
+export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, onFinish, onDone, onDeleteSession, onOpenHistory }: {
   model: ActiveSessionViewModel;
   actions: ActiveSessionActions;
   sheet: (chipKey: string) => SetSheetViewModel | null;
@@ -26,6 +26,7 @@ export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, 
   /** Leave a finished session that was being corrected. */
   onDone: () => void;
   onDeleteSession: () => void;
+  onOpenHistory?: (exerciseId: string) => void;
 }) {
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-bg">
@@ -53,7 +54,7 @@ export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, 
               </Pressable>
             </View>
           </View>
-          <ActiveSession content={model} actions={actions} sheet={sheet} errorText={errorText} />
+          <ActiveSession content={model} actions={actions} sheet={sheet} errorText={errorText} onOpenHistory={onOpenHistory} />
           <View className="gap-2 border-t border-line-soft px-4 pb-2 pt-3">
             <UndoToast offer={undo.offer} errorText={undo.errorText} onUndo={undo.onUndo} />
             {model.active && model.rest && (
@@ -61,7 +62,7 @@ export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, 
                 onAddThirty={actions.addThirtySeconds} onSkip={actions.skipRest} />
             )}
             {model.active
-              ? <ActionButton label="Finish session" onPress={onFinish} />
+              ? <ActionButton testID="finish-session" label="Finish session" onPress={onFinish} />
               : <ActionButton label="Done" onPress={onDone} />}
           </View>
         </>

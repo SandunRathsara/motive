@@ -20,7 +20,8 @@ function spoken({ loadKg, reps }: SetValue, bodyweight: boolean): string {
   return loadKg === null ? `Load not set, ${spokenReps(reps)}` : `${spokenKilograms(loadKg)}, ${spokenReps(reps)}`;
 }
 
-export function SetChip({ loadKg, reps, bodyweight = false, recommended, last, saveState = 'idle', disabled = false, onPress }: {
+export function SetChip({ testID, loadKg, reps, bodyweight = false, recommended, last, saveState = 'idle', disabled = false, onPress }: {
+  testID?: string;
   loadKg: number | null;
   reps: number;
   bodyweight?: boolean;
@@ -43,7 +44,7 @@ export function SetChip({ loadKg, reps, bodyweight = false, recommended, last, s
     ? `Last session ${spoken(last, bodyweight)}. ${saveState === 'failed' ? 'Retries saving this set.' : 'Logs this set.'}`
     : needsLoad ? 'Set a load with the steppers first.' : undefined;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={hint}
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={hint}
       accessibilityState={{ disabled: blocked, busy: saveState === 'saving' }} disabled={blocked} onPress={onPress}
       className={`min-h-14 min-w-[44px] flex-1 justify-center rounded-md border px-4 py-2 ${
         saveState === 'failed' ? 'border-danger bg-surface-2' : recommended ? 'border-accent bg-surface-2' : 'border-line bg-surface-2'}`}>

@@ -10,7 +10,7 @@ export function QuickAddSet({ model, busy = false, onPress }: { model: TodayTrai
   const hint = model.status !== 'ready' || model.action === 'none' ? undefined
     : model.action === 'resume' ? `Opens your ${model.templateName} session` : `Starts ${model.templateName}`;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Add set" accessibilityHint={hint}
+    <Pressable testID="quick-add-set" accessibilityRole="button" accessibilityLabel="Add set" accessibilityHint={hint}
       accessibilityState={{ disabled: !usable, busy }} disabled={!usable} onPress={onPress}
       className={`min-h-14 min-w-[44px] flex-row items-center justify-center gap-2 rounded-md px-6 py-4 ${usable ? 'bg-accent' : 'border border-line bg-surface'}`}>
       <Text accessibilityElementsHidden importantForAccessibility="no" className={`text-2xl ${usable ? 'text-accent-ink' : 'text-muted'}`}>+</Text>

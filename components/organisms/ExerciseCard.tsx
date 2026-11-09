@@ -11,10 +11,12 @@ export type DirectEntryField = 'load' | 'reps';
  * (load by the exercise's increment, reps by 1) so a change before logging stays on the card. Every chip
  * has an Edit control that opens the set sheet. Presentational: the view model carries all copy.
  */
-export function ExerciseCard({ model, steppers = true, onToggle, onLogChip, onAdjust, onOpenSheet, onDirectEntry }: {
+export function ExerciseCard({ model, steppers = true, onOpenHistory, onToggle, onLogChip, onAdjust, onOpenSheet, onDirectEntry }: {
   model: ExerciseCardViewModel;
   /** False while the set sheet is open, so the same adjustable controls never appear twice. */
   steppers?: boolean;
+  /** Opens this exercise's history across every template (TRN-5). */
+  onOpenHistory?: (exerciseId: string) => void;
   onToggle: (templateExerciseId: string) => void;
   onLogChip: (chipKey: string) => void;
   onAdjust: (chipKey: string, values: Partial<ChipDraft>) => void;
@@ -40,6 +42,12 @@ export function ExerciseCard({ model, steppers = true, onToggle, onLogChip, onAd
       {model.expanded && (
         <View className="gap-4 px-4 pb-4">
           {model.reasonLine && <Text className="text-base text-muted">{model.reasonLine}</Text>}
+          {onOpenHistory && (
+            <Pressable accessibilityRole="button" accessibilityLabel={`${model.name} history`} accessibilityHint="Opens every session with this exercise"
+              onPress={() => onOpenHistory(model.exerciseId)} className="min-h-12 min-w-[44px] justify-center self-start">
+              <Text className="text-base text-info">History</Text>
+            </Pressable>
+          )}
           {model.chips.map((chip) => (
             <View key={chip.key} className="gap-2">
               <View className="flex-row flex-wrap items-center gap-x-3">
@@ -47,7 +55,7 @@ export function ExerciseCard({ model, steppers = true, onToggle, onLogChip, onAd
                 {chip.failedSet && <Text className="text-base text-muted">Failed Set</Text>}
               </View>
               <View className="flex-row items-center gap-2">
-                <SetChip loadKg={chip.loadKg} reps={chip.reps} bodyweight={chip.bodyweight} recommended={chip.recommended}
+                <SetChip testID={chip === focus ? 'next-set-chip' : `set-chip-${chip.key}`} loadKg={chip.loadKg} reps={chip.reps} bodyweight={chip.bodyweight} recommended={chip.recommended}
                   last={chip.last ?? undefined} saveState={chip.saveState} onPress={() => onLogChip(chip.key)} />
                 <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${chip.label}`}
                   accessibilityHint="Opens load, reps, set type and delete" onPress={() => onOpenSheet(chip.key)}
