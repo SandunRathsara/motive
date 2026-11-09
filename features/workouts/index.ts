@@ -57,8 +57,13 @@ export { validateProgramDraft, programDraftTools } from './workouts.program';
 export type { ProgramDraft, ProgramDraftValidation, ProgramDraftTools } from './workouts.program';
 export { formatKg, formatSet, formatNumber } from './workouts.format';
 export { workoutErrorText } from './workouts.view-models';
+export type { Loadable } from './workouts.view-models';
 export type {
-  ChipSaveState, SetChipViewModel, ExerciseCardViewModel, ActiveSessionContent, ActiveSessionViewModel, SetSheetViewModel,
-  TodayTrainingViewModel, TemplateCardViewModel, RecentSessionViewModel, OtherActivityViewModel, TrainingWeekContent, TrainingWeekViewModel,
-  SessionSummaryContent, SessionSummaryViewModel, ExerciseHistoryContent, ExerciseHistoryViewModel, ChipDraft,
-} from './workouts.view-models';
+  ChipSaveState, SetChipViewModel, ExerciseCardViewModel, ActiveSessionContent, ActiveSessionViewModel, SetSheetViewModel, ChipDraft,
+} from './workouts.session-view';
+export type { TodayTrainingContent, TodayTrainingViewModel } from './workouts.today-view';
+export type {
+  TemplateCardViewModel, RecentSessionViewModel, OtherActivityViewModel, TrainingWeekContent, TrainingWeekViewModel,
+} from './workouts.train-view';
+export type { SessionSummaryContent, SessionSummaryViewModel } from './workouts.summary-view';
+export type { ExerciseHistoryContent, ExerciseHistoryViewModel } from './workouts.history-view';

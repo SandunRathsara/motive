@@ -14,13 +14,15 @@ type UndoProps = Parameters<typeof UndoToast>[0];
  * above; the bottom controls (undo toast, rest bar, Finish) stay in the thumb zone (UX-8). Nothing here
  * blocks: the rest bar and toast are in-layout, and logging continues during rest (UX-10, TRN-7).
  */
-export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, onFinish, onDone, onDeleteSession, onOpenHistory }: {
+export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, now = Date.now, onFinish, onDone, onDeleteSession, onOpenHistory }: {
   model: ActiveSessionViewModel;
   actions: ActiveSessionActions;
   sheet: (chipKey: string) => SetSheetViewModel | null;
   /** Calm "Not saved" copy from the last failed commit (set, finish or delete). */
   errorText?: string;
   undo: Pick<UndoProps, 'offer' | 'errorText' | 'onUndo'>;
+  /** Wall clock for the elapsed timer and rest bar; tests inject a fixed one. */
+  now?: () => number;
   /** Finish the active session; the route navigates to the summary with the id `actions.finish` resolves. */
   onFinish: () => void;
   /** Leave a finished session that was being corrected. */
@@ -42,7 +44,7 @@ export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, 
           <View className="gap-1 px-4 pt-3">
             <View className="flex-row items-center gap-3">
               <Text accessibilityRole="header" className="flex-1 text-2xl font-semibold text-text">{model.templateName}</Text>
-              {model.active && <ElapsedTimer startedAt={model.startedAt} now={actions.now} />}
+              {model.active && <ElapsedTimer startedAt={model.startedAt} now={now} />}
             </View>
             <View className="flex-row flex-wrap items-center gap-x-3">
               <Text className="text-base text-muted">{model.progressText}</Text>
@@ -58,7 +60,7 @@ export function ActiveSessionTemplate({ model, actions, sheet, errorText, undo, 
           <View className="gap-2 border-t border-line-soft px-4 pb-2 pt-3">
             <UndoToast offer={undo.offer} errorText={undo.errorText} onUndo={undo.onUndo} />
             {model.active && model.rest && (
-              <RestBar deadlineMs={model.rest.deadlineMs} durationSeconds={model.rest.durationSeconds} now={actions.now}
+              <RestBar deadlineMs={model.rest.deadlineMs} durationSeconds={model.rest.durationSeconds} now={now}
                 onAddThirty={actions.addThirtySeconds} onSkip={actions.skipRest} />
             )}
             {model.active

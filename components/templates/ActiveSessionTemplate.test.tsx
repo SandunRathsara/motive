@@ -10,7 +10,7 @@ afterEach(() => { jest.restoreAllMocks(); });
 const noUndo = { offer: null, onUndo: jest.fn() };
 const setup = (model: ActiveSessionViewModel, extra: Partial<Parameters<typeof ActiveSessionTemplate>[0]> = {}) => {
   const actions = makeActions();
-  const props = { model, actions, sheet: () => sheetModel(), undo: noUndo, onFinish: jest.fn(), onDone: jest.fn(), onDeleteSession: jest.fn(), ...extra };
+  const props = { model, actions, sheet: () => sheetModel(), undo: noUndo, now: () => 1_000_000 + 754_000, onFinish: jest.fn(), onDone: jest.fn(), onDeleteSession: jest.fn(), ...extra };
   return { actions, props, element: <ActiveSessionTemplate {...props} /> };
 };
 

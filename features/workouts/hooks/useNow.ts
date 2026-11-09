@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { AppState } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { useAppStateChange } from './shared';
 
 /** Re-reads the clock when the app returns to the foreground and after each 04:00 boundary (weeks and days roll over). */
 export function useNow(): number {
@@ -11,9 +11,6 @@ export function useNow(): number {
     const timer = setTimeout(() => setNow(Date.now()), next.getTime() - now);
     return () => clearTimeout(timer);
   }, [now]);
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') setNow(Date.now()); });
-    return () => subscription.remove();
-  }, []);
+  useAppStateChange(useCallback((state) => { if (state === 'active') setNow(Date.now()); }, []));
   return now;
 }
