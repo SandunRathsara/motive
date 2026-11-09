@@ -5,7 +5,10 @@ import { createWorkoutRepository } from './workout-repository';
 /**
  * Sessions, set entries and the (rebuildable) progression cache. Rest overrides and increments ride in
  * the plan section's Training Program and in each session's prescription snapshot. Health links are derived on
- * read (SIG-9), never stored, so they are not exported.
+ * read (SIG-9), never stored, so they are not exported. They also cannot be derived here: a section reads
+ * through its own transaction connection, while Health's workout reads go through the shared record handle,
+ * which queues behind that transaction. The linking inputs (session windows here, cached workouts in the
+ * Health signals section) are both exported, so links are reproducible from the export.
  */
 export const trainingLogExportSection: ExportSection = {
   key: 'trainingLog', version: 1, owner: 'workouts',

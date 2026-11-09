@@ -17,6 +17,8 @@ const PROVIDER_PACKAGES = [
 const NATIVE_DATA = /^(?:expo-sqlite|expo-file-system|expo-sharing)(?:\/|$)/;
 // docs/ARCHITECTURE.md §4–§5; TECH_STACK §3: HealthKit belongs only to health services.
 const HEALTHKIT = /healthkit|^react-native-health(?:\/|$)/i;
+// docs/ARCHITECTURE.md §4, TRN-11: workout progression modules (`workouts.progression*.ts`, tests included).
+const PROGRESSION_MODULE = /^features\/workouts\/workouts\.progression(?:\.[\w-]+)*\.ts$/;
 // docs/ARCHITECTURE.md §4; slice 2 (DATA-4): one native share adapter, behind the data feature's services.
 const SHARE_ADAPTER = 'features/data/services/share.ts';
 
@@ -74,6 +76,11 @@ export function checkArchitecture(root = process.cwd()) {
       }
       if (isPackage && /^zustand(?:\/|$)/.test(specifier) && layer !== 'store') {
         add(node, 'store-placement', 'Zustand imports belong in store/.', 5);
+      }
+      // docs/ARCHITECTURE.md §4 (TRN-11): Health Signals have no authority over training, so the progression
+      // rules cannot import features/health, including type-only and deep imports. Linking may (SIG-9).
+      if (PROGRESSION_MODULE.test(relative) && (target === 'features/health' || (target ?? '').startsWith('features/health/'))) {
+        add(node, 'progression-health', `Progression rules cannot import '${specifier}' (TRN-11).`, 4);
       }
       // docs/ARCHITECTURE.md §4: enforce the importer/dependency table, including type-only contracts.
       let forbidden = false;

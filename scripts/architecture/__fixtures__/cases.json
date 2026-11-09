@@ -14,7 +14,9 @@
     "lib/utils/id.ts": "export const id = () => 'id';",
     "lib/contracts/shared.ts": "export type Shared = string;",
     "lib/theme/tokens.js": "export const color = 'white';",
-    "lib/logger.ts": "console.info('safe-code'); console['warn']('safe-code');"
+    "lib/logger.ts": "console.info('safe-code'); console['warn']('safe-code');",
+    "features/workouts/workouts.linking.ts": "import type { HealthWorkout } from '@/features/health'; export type Linkable = Pick<HealthWorkout, 'id'>;",
+    "features/workouts/workouts.progression.ts": "import type { Goal } from '@/features/goals'; export const rule = (goal: Goal) => goal;"
   },
   "violations": [
     { "path": "app/private.ts", "source": "import { useHealth } from '@/features/health/hooks/useHealth';", "rule": "import-boundary" },
@@ -73,6 +75,12 @@
     { "path": "lib/dynamic.ts", "source": "const sdk = import('openai');", "rule": "provider-sdk" },
     { "path": "lib/require.js", "source": "const sdk = require('@supabase/supabase-js');", "rule": "provider-sdk" },
     { "path": "components/Export.ts", "source": "export { useHealth } from '@/features/health';", "rule": "import-boundary" },
-    { "path": "components/Mixed.ts", "source": "import { type Goal, useGoal } from '@/features/goals';", "rule": "import-boundary" }
+    { "path": "components/Mixed.ts", "source": "import { type Goal, useGoal } from '@/features/goals';", "rule": "import-boundary" },
+    { "path": "features/workouts/workouts.progression.ts", "source": "import { getTrendWeight } from '@/features/health';", "rule": "progression-health" },
+    { "path": "features/workouts/workouts.progression.ts", "source": "import type { HealthSample } from '@/features/health';", "rule": "progression-health" },
+    { "path": "features/workouts/workouts.progression.ts", "source": "import type { Health } from '@/features/health/health.types';", "rule": "progression-health" },
+    { "path": "features/workouts/workouts.progression.ts", "source": "export { useSignals } from '@/features/health';", "rule": "progression-health" },
+    { "path": "features/workouts/workouts.progression.test.ts", "source": "import { getTrendWeight } from '../health';", "rule": "progression-health" },
+    { "path": "features/workouts/workouts.progression.recommend.ts", "source": "const load = import('@/features/health');", "rule": "progression-health" }
   ]
 }

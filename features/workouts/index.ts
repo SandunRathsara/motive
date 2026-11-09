@@ -25,3 +25,35 @@ export { summarizeSession, previousCompletedSession, compareWithPrevious, nextTi
 export type { SummarySet, SummarySession, ExerciseLookup, SessionSummary, SessionComparison, NextTimeOutcome } from './workouts.summary';
 export { linkWorkouts } from './workouts.linking';
 export type { LinkableSession, LinkableWorkout, WorkoutLink, WorkoutLinking } from './workouts.linking';
+export {
+  armSetTimer, touchSetTimer, endRest, backgroundSetTimer, foregroundSetTimer, setLoggingDurationMs,
+} from './workouts.timing';
+export type { SetTimer } from './workouts.timing';
+
+// ---- Slice 5: service, hooks, view models and exposed-to-later-slices functions ----
+export { createWorkoutService, workoutService } from './services/workout-service';
+export type { WorkoutService, WorkoutServiceOptions, LogSetInput, EditSetInput, UndoToken, ProgramState } from './services/workout-service';
+export { getClosedWeekCounts, getStallHistory, getProgramCreatedAt, getLastSevenDays, startDeloadSession, onWeeklyTargetEdited } from './services/later-slices';
+export { workoutKeys } from './hooks/query-keys';
+export { useTodayTraining } from './hooks/useTodayTraining';
+export { useTrainingWeek } from './hooks/useTrainingWeek';
+export { useActiveSession } from './hooks/useActiveSession';
+export type { ActiveSessionActions } from './hooks/useActiveSession';
+export { useSessionSummary } from './hooks/useSessionSummary';
+export { useExerciseHistory } from './hooks/useExerciseHistory';
+export { useProgramEditor } from './hooks/useProgramEditor';
+export type { ProgramEditorViewModel, SaveProgramResult } from './hooks/useProgramEditor';
+export { useTrainingSettings } from './hooks/useTrainingSettings';
+export type { TrainingSettingsViewModel } from './hooks/useTrainingSettings';
+export { useUndo } from './hooks/useUndo';
+export type { UndoOffer } from './workouts.undo';
+export { defaultRestSeconds } from './workouts.history';
+export { defaultIncrementKg, newTemplateExercise, blankTemplate, validateProgramDraft } from './workouts.program';
+export type { ProgramDraft, ProgramDraftValidation } from './workouts.program';
+export { formatKg, formatSet, formatNumber } from './workouts.format';
+export { workoutErrorText } from './workouts.view-models';
+export type {
+  ChipSaveState, SetChipViewModel, ExerciseCardViewModel, ActiveSessionContent, ActiveSessionViewModel, SetSheetViewModel,
+  TodayTrainingViewModel, TemplateCardViewModel, RecentSessionViewModel, OtherActivityViewModel, TrainingWeekContent, TrainingWeekViewModel,
+  SessionSummaryContent, SessionSummaryViewModel, ExerciseHistoryContent, ExerciseHistoryViewModel, ChipDraft,
+} from './workouts.view-models';

@@ -1,0 +1,17 @@
+export const workoutKeys = {
+  all: ['workouts'] as const,
+  today: ['workouts', 'today'] as const,
+  overview: (day: string) => ['workouts', 'overview', day] as const,
+  program: ['workouts', 'program'] as const,
+  session: (sessionId: string) => ['workouts', 'session', sessionId] as const,
+  summary: (sessionId: string) => ['workouts', 'summary', sessionId] as const,
+  history: (exerciseId: string) => ['workouts', 'history', exerciseId] as const,
+  startSession: ['workouts', 'startSession'] as const,
+  logSet: ['workouts', 'logSet'] as const,
+  editSet: ['workouts', 'editSet'] as const,
+  deleteSet: ['workouts', 'deleteSet'] as const,
+  finishSession: ['workouts', 'finishSession'] as const,
+  deleteSession: ['workouts', 'deleteSession'] as const,
+  undo: ['workouts', 'undo'] as const,
+  saveProgram: ['workouts', 'saveProgram'] as const,
+};

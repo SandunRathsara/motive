@@ -139,6 +139,7 @@ Zustand rules:
 - One focused store per file; no monolithic `useAppStore` for unrelated domains.
 - Export typed actions and state. Components receive shared state through routes or dedicated feature hooks rather than importing stores arbitrarily. Feature hooks and services may read a store or call its actions (for example, erase participants refuse writes unless `store/record-lifecycle.ts` allows them).
 - Stores hold client state only, not fetched server caches, provider clients, secrets, or native module singletons.
+- `store/active-workout.ts` is the one training store ([Slice 5](https://github.com/SandunRathsara/motive/issues/23)): the active session id, the rest deadline (wall clock), the expanded exercise and the set-timer anchors. Sessions, sets and progression stay in Query over the local record; the workouts erase participant resets the store. The 5 s undo offer (TRN-3) is the one other in-memory training state: it lives in `features/workouts/workouts.undo.ts`, outside React, because it must outlive the screen that produced it, and the same participant clears it.
 
 ## 6. Feature data flow
 
