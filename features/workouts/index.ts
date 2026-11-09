@@ -3,3 +3,9 @@ export type { ExerciseLibraryEntry, TemplateExercise, SessionTemplate, TrainingP
 export { exerciseLibrary, exerciseLibraryVersion, getExerciseById, starterSessionTemplate, starterTrainingProgram } from './workouts.content';
 export { readExerciseLibrary, WorkoutsError } from './services/exercise-library-repository';
 export { exerciseLibraryExportSection } from './services/export-section';
+export { isSessionCompleted, trainingWeekBounds, sessionAttribution, completedCountsByWeek, completedInWeek, nextTemplate } from './workouts.schedule';
+export type { ScheduleSession, TrainingWeek } from './workouts.schedule';
+export { summarizeSession, previousCompletedSession, compareWithPrevious, nextTimeLine } from './workouts.summary';
+export type { SummarySet, SummarySession, ExerciseLookup, SessionSummary, SessionComparison, NextTimeOutcome } from './workouts.summary';
+export { linkWorkouts } from './workouts.linking';
+export type { LinkableSession, LinkableWorkout, WorkoutLink, WorkoutLinking } from './workouts.linking';
