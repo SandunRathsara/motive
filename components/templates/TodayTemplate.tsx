@@ -4,13 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TodayPlanViewModel } from '@/features/plan';
 import { ActionButton } from '@/components/atoms/ActionButton';
 
-export function TodayTemplate({ model, onOpenSettings, onOpenTargets, onEditKcal, onEditProtein, trendLine }: {
+export function TodayTemplate({ model, onOpenSettings, onOpenTargets, onEditKcal, onEditProtein, trendLine, training, quickAdd }: {
   model: TodayPlanViewModel;
   onOpenSettings: () => void;
   onOpenTargets: () => void;
   onEditKcal: () => void;
   onEditProtein: () => void;
   trendLine?: ReactNode;
+  /** The Start/Resume card (TODAY-1). */
+  training?: ReactNode;
+  /** The always-visible Set quick-add (TODAY-5), pinned under the scroll so it never leaves the thumb zone. */
+  quickAdd?: ReactNode;
 }) {
   return <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-bg">
     <ScrollView contentContainerClassName="gap-6 px-6 py-8">
@@ -49,7 +53,9 @@ export function TodayTemplate({ model, onOpenSettings, onOpenTargets, onEditKcal
         accessibilityHint="Opens targets in Settings" onPress={onOpenTargets} className="min-h-14 justify-center self-start rounded-full border border-line bg-surface px-5 py-3">
         <Text className="text-base text-text">{model.chipLabel}</Text>
       </Pressable>}
+      {training}
       {trendLine}
     </ScrollView>
+    {quickAdd && <View className="border-t border-line-soft bg-bg px-6 py-3">{quickAdd}</View>}
   </SafeAreaView>;
 }

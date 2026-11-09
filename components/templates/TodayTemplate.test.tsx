@@ -1,3 +1,4 @@
+import { Text } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { TodayPlanViewModel } from '@/features/plan';
 import { TodayTemplate } from './TodayTemplate';
@@ -40,4 +41,14 @@ test('Today omits the chip on an unchanged day and missing record data is never 
   await view.rerender(<TodayTemplate model={{ ...model, status: 'error', targets: null, chipLabel: null }} {...actions} />);
   await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   expect(model.retry).toHaveBeenCalled();
+});
+
+test('Today renders the training card in the scroll and pins the quick-add outside it', async () => {
+  await render(<TodayTemplate model={model} {...actions} training={<Text>Training card</Text>} quickAdd={<Text>Quick add</Text>} />);
+  expect(screen.getByText('Training card')).toBeOnTheScreen();
+  expect(screen.getByText('Quick add')).toBeOnTheScreen();
+  // The quick-add must stay visible however long the content is: it is a sibling of the ScrollView, not inside it.
+  const scroll = screen.getByText('Training card').parent;
+  let node = screen.getByText('Quick add').parent;
+  while (node) { expect(node).not.toBe(scroll); node = node.parent; }
 });

@@ -23,6 +23,13 @@ jest.mock('./features/onboarding/services/complete-onboarding', () => ({
   completeOnboarding: async () => { mockOnboardingStatus = 'present'; return {}; },
 }));
 jest.mock('@/features/metrics', () => ({ useUncleanExitTracking: jest.fn() }));
+// Today and Settings now read training state; training screens are covered in app.training.test.tsx.
+jest.mock('./features/workouts/services/workout-service', () => ({
+  workoutService: {
+    readToday: async () => ({ active: null, next: null }),
+    readProgram: async () => ({ versionNumber: 1, state: { weeklySessionTarget: 3, trainingProgram: { rotation: [] } } }),
+  },
+}));
 jest.mock('@/features/data', () => ({
   useEraseLifecycle: () => ({
     phase: jest.requireActual<typeof import('./store/record-lifecycle')>('./store/record-lifecycle').useRecordLifecycle((state) => state.phase),
@@ -50,9 +57,13 @@ const routes = {
   _layout: RootLayout,
   '(tabs)/_layout': TabLayout,
   '(tabs)/index': TodayRoute,
-  '(tabs)/train': () => <Text>Train placeholder</Text>,
+  '(tabs)/train': () => <Text>Train screen</Text>,
   '(tabs)/fuel': () => <Text>Fuel placeholder</Text>,
   '(tabs)/coach': () => <Text>Coach placeholder</Text>,
+  'session/[id]/index': () => <Text>Session view</Text>,
+  'session/[id]/summary': () => <Text>Summary view</Text>,
+  program: () => <Text>Program view</Text>,
+  'history/[exerciseId]': () => <Text>History view</Text>,
   'settings/index': SettingsRoute,
   'settings/about': () => <Text>About view</Text>,
   'settings/report': () => <Text>Report view</Text>,

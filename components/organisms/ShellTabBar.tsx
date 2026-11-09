@@ -1,12 +1,17 @@
+import type { ReactNode } from 'react';
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Intrinsic height avoids the navigator's fixed-height tab bar. Like UIKit tab bars, labels scale
 // only up to 1.5x so four words never break mid-word at AX sizes; long-press shows the Large Content Viewer.
-export function ShellTabBar({ state, descriptors, emitter, navigateToTab }: BottomTabBarProps) {
+export function ShellTabBar({ state, descriptors, emitter, navigateToTab, above }: BottomTabBarProps & {
+  /** Shown directly above the tabs on every tab, for example the undo toast. */
+  above?: ReactNode;
+}) {
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} className="border-t border-line-soft bg-surface">
+      {above}
       <View className="flex-row">
       {state.routes.map((route, index) => {
         const selected = state.index === index;
@@ -14,6 +19,7 @@ export function ShellTabBar({ state, descriptors, emitter, navigateToTab }: Bott
         return (
           <Pressable
             key={route.key}
+            testID={`tab-${route.name}`}
             accessibilityRole="tab"
             accessibilityLabel={label}
             accessibilityState={{ selected }}

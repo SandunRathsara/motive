@@ -12,13 +12,14 @@ type SheetState = { chipKey: string; entry: DirectEntryField | null };
  * The set sheet (S4) opens below it as a panel, not a modal, so the session stays usable (UX-10). All
  * state here is ephemeral UI state; committed data and drafts live in the hook behind `actions`.
  */
-export function ActiveSession({ content, actions, sheet, errorText }: {
+export function ActiveSession({ content, actions, sheet, errorText, onOpenHistory }: {
   content: ActiveSessionContent;
   actions: ActiveSessionActions;
   /** The sheet model for a chip, or null when that chip no longer exists. */
   sheet: (chipKey: string) => SetSheetViewModel | null;
   /** Calm "Not saved" copy from the last failed commit. */
   errorText?: string;
+  onOpenHistory?: (exerciseId: string) => void;
 }) {
   const [sheetState, setSheetState] = useState<SheetState | null>(null);
   const current = content.exercises.find((exercise) => exercise.expanded) ?? null;
@@ -40,7 +41,7 @@ export function ActiveSession({ content, actions, sheet, errorText }: {
     if (model.setId && await actions.deleteSet(model.setId)) setSheetState(null);
   };
   const card = (exercise: ActiveSessionContent['exercises'][number]) => (
-    <ExerciseCard key={exercise.templateExerciseId} model={exercise} steppers={sheetModel === null} onToggle={toggle} onLogChip={(key) => { void actions.logChip(key); }}
+    <ExerciseCard key={exercise.templateExerciseId} model={exercise} steppers={sheetModel === null} onOpenHistory={onOpenHistory} onToggle={toggle} onLogChip={(key) => { void actions.logChip(key); }}
       onAdjust={adjust} onOpenSheet={(chipKey) => setSheetState({ chipKey, entry: null })}
       onDirectEntry={(chipKey, entry) => setSheetState({ chipKey, entry })} />
   );

@@ -169,6 +169,21 @@ describe('useActiveSession', () => {
     expect(service.logSet).toHaveBeenCalledWith(expect.objectContaining({ loadKg: 60, reps: 6 }));
   });
 
+  test('a stepper draft does not survive a sheet log or a delete, so it cannot reappear on a later chip', async () => {
+    service.readSession.mockResolvedValue(detail([], null));
+    service.logSet.mockResolvedValue({ set: set(0, 60, 6), undo: { kind: 'deleteSet', setId: 'set-0' } });
+    const { result } = await renderHook(() => useActiveSession('s1'), { wrapper });
+    await waitFor(() => expect(result.current.model.status).toBe('ready'));
+    const firstChip = () => (result.current.model as { exercises: { chips: { key: string; loadKg: number | null }[] }[] }).exercises[0].chips[0];
+    await act(async () => { await result.current.actions.adjust('sq:0', { loadKg: 100 }); });
+    expect(firstChip().loadKg).toBe(100);
+    // The set is logged from the sheet with other values; the unlogged slot must not keep the old draft.
+    await act(async () => { await result.current.actions.logSet({ templateExerciseId: 'sq', loadKg: 60, reps: 6 }); });
+    service.readSession.mockResolvedValue(detail([], null));
+    await act(async () => { await client.invalidateQueries({ queryKey: workoutKeys.all }); });
+    await waitFor(() => expect(firstChip().loadKg).toBeNull());
+  });
+
   test('adjusting a saved chip is an edit after save', async () => {
     service.readSession.mockResolvedValue(detail([set(0, 80, 9)]));
     service.editSet.mockResolvedValue({ set: set(0, 82.5, 9) });

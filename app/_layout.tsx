@@ -50,6 +50,10 @@ export default function RootLayout() {
     </Stack.Protected>
     <Stack.Protected guard={gate.onboardingStatus === 'present'} redirectTo="/onboarding">
     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <Stack.Screen name="session/[id]/index" options={{ title: 'Session' }} />
+    <Stack.Screen name="session/[id]/summary" options={{ title: 'Summary' }} />
+    <Stack.Screen name="program" options={{ title: 'Training Program' }} />
+    <Stack.Screen name="history/[exerciseId]" options={{ title: 'Exercise history' }} />
     <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
     <Stack.Screen name="settings/target" options={{ title: 'Edit targets' }} />
     <Stack.Screen name="settings/report" options={{ title: 'Phase 1 report' }} />

@@ -23,7 +23,7 @@ export function TodayTrainingCard({ model, busy = false, errorText, onOpen }: {
           <Text selectable className="text-3xl font-semibold text-text">{model.title}</Text>
           <Text className="text-base text-muted">{model.detail}</Text>
         </View>
-        {model.action !== 'none' && <ActionButton label={model.buttonLabel} accessibilityLabel={model.accessibilityLabel}
+        {model.action !== 'none' && <ActionButton testID="today-training-action" label={model.buttonLabel} accessibilityLabel={model.accessibilityLabel}
           disabled={busy} onPress={onOpen} />}
         <InlineNotice text={errorText} error />
       </>}

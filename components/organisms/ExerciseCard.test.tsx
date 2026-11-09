@@ -131,3 +131,19 @@ test('a completed exercise says Done in words', async () => {
   expect(screen.getByText('✓ Done')).toBeOnTheScreen();
   expect(screen.getByRole('button', { name: 'Back Squat, 3 × 6–10, 3 of 3 sets, done' })).toBeOnTheScreen();
 });
+
+test('History opens the exercise across every template, and only when the host offers it', async () => {
+  const h = handlers();
+  const view = await render(<ExerciseCard model={card()} {...h} />);
+  expect(screen.queryByRole('button', { name: 'Back Squat history' })).toBeNull();
+  const onOpenHistory = jest.fn();
+  await view.rerender(<ExerciseCard model={card()} {...h} onOpenHistory={onOpenHistory} />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Back Squat history' }));
+  expect(onOpenHistory).toHaveBeenCalledWith('back-squat');
+});
+
+test('the next chip carries a stable testID for UI flows; other chips are keyed', async () => {
+  await render(<ExerciseCard model={card()} {...handlers()} />);
+  expect(screen.getByTestId('next-set-chip')).toHaveProp('accessibilityLabel', '80 kilograms, 9 reps, recommended');
+  expect(screen.getByTestId('set-chip-full-body-back-squat:0')).toBeOnTheScreen();
+});

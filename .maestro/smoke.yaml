@@ -12,14 +12,17 @@ appId: dev.motive.app
 - assertVisible: "Your targets"
 - assertVisible: ".*starting estimate.*"
 - assertVisible: "Plan v1"
+- assertVisible: "Add set"
 - assertNotVisible: "MOTIVE · RECOVERY"
 - assertVisible: "Train"
 - tapOn: "Train"
 - assertVisible:
     text: "Train"
     selected: true
-- assertVisible: "Your training space is coming next. Make yourself at home."
-- assertVisible: "Not built yet"
+# Train is the real S2 screen; the Start/Resume flows live in the slice 5 flows.
+- assertVisible: "Templates"
+- assertVisible: "Training Program"
+- assertNotVisible: "Not built yet"
 - assertNotVisible: "MOTIVE · RECOVERY"
 - assertVisible: "Fuel"
 - tapOn: "Fuel"
