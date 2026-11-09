@@ -1,5 +1,6 @@
-import { Pressable, Text, View, type AccessibilityActionEvent } from 'react-native';
+import { Text, View, type AccessibilityActionEvent } from 'react-native';
 import { formatQuantity } from './quantity';
+import { StepButton, stepperControls } from './stepper-controls';
 
 /**
  * A compact −/+ control for small program quantities (sets, reps, seconds, kilograms). 44pt+ targets, an
@@ -21,23 +22,11 @@ export function CountStepper({ label, value, unit, unitPlural = unit, step, min 
 }) {
   const noun = label.toLowerCase();
   const spoken = (amount: number) => `${formatQuantity(amount)} ${amount === 1 ? unit : unitPlural}`;
-  const clamp = (next: number) => Math.min(max ?? Infinity, Math.max(min, Math.round(next * 100) / 100));
-  const stepBy = (direction: 1 | -1) => onChange(clamp(value + direction * step));
-  const canDecrease = !disabled && value > min;
-  const canIncrease = !disabled && (max === undefined || value < max);
-  const onAction = ({ nativeEvent }: AccessibilityActionEvent) => {
-    if (nativeEvent.actionName === 'increment' && canIncrease) stepBy(1);
-    else if (nativeEvent.actionName === 'decrement' && canDecrease) stepBy(-1);
-  };
+  const { stepBy, canDecrease, canIncrease, handleAdjust } = stepperControls({ value, step, min, max, disabled, onChange });
+  const onAction = ({ nativeEvent }: AccessibilityActionEvent) => { handleAdjust(nativeEvent.actionName); };
   const button = (direction: 1 | -1, enabled: boolean) => (
-    <Pressable accessibilityRole="button" disabled={!enabled} accessibilityState={{ disabled: !enabled }}
-      accessibilityLabel={`${direction === 1 ? 'Increase' : 'Decrease'} ${noun} by ${spoken(step)}`}
-      onPress={() => stepBy(direction)}
-      className="h-12 w-12 min-w-[44px] items-center justify-center rounded-md border border-line bg-surface-2">
-      <Text accessibilityElementsHidden importantForAccessibility="no" className={`text-xl ${enabled ? 'text-text' : 'text-muted'}`}>
-        {direction === 1 ? '+' : '−'}
-      </Text>
-    </Pressable>
+    <StepButton direction={direction} enabled={enabled} size="medium" onPress={() => stepBy(direction)}
+      accessibilityLabel={`${direction === 1 ? 'Increase' : 'Decrease'} ${noun} by ${spoken(step)}`} />
   );
   return (
     <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">

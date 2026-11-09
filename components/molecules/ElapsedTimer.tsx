@@ -1,13 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import { Text, View } from 'react-native';
-
-function clock(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const two = (value: number) => String(value).padStart(2, '0');
-  return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds)}` : `${minutes}:${two(seconds)}`;
-}
+import { clock } from './clock';
 
 function spoken(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
