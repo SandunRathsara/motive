@@ -1,4 +1,5 @@
-import { blankTemplate, defaultIncrementKg, newTemplateExercise, validateProgramDraft, type ProgramDraft } from './workouts.program';
+import { blankTemplate, createProgramDraftTools, defaultIncrementKg, newTemplateExercise, validateProgramDraft, type ProgramDraft } from './workouts.program';
+import { trainingProgramSchema } from './workouts.schemas';
 import { starterTrainingProgram } from './workouts.content';
 
 const ids = () => { let n = 0; return () => `n${++n}`; };
@@ -47,4 +48,26 @@ test('a rest override must be a positive whole number of seconds', () => {
   ] }] } });
   expect(validateProgramDraft(withRest(120)).valid).toBe(true);
   expect(validateProgramDraft(withRest(0)).errors['templates.0.exercises.0.restOverrideSeconds']).toBe('Use a whole number of seconds');
+});
+
+test('draft tools make templates and exercises with ids that do not collide', () => {
+  const tools = createProgramDraftTools();
+  const entry = { id: 'leg-press', name: 'Leg Press', muscleGroup: 'quadriceps' as const, equipment: 'machine' as const, bodyweight: false };
+  const first = tools.newTemplate('Legs');
+  const second = tools.newTemplate('Legs');
+  expect(first).toMatchObject({ name: 'Legs', exercises: [] });
+  expect(first.id).not.toBe(second.id);
+  const exercise = tools.newExercise(first.id, entry);
+  expect(exercise).toMatchObject({ exerciseId: 'leg-press', workingSets: 3, repRange: { min: 8, max: 12 }, incrementKg: 5 });
+  expect(exercise.id.startsWith(`${first.id}-leg-press-`)).toBe(true);
+  expect(tools.newExercise(first.id, entry).id).not.toBe(exercise.id);
+});
+
+test('a program built with the draft tools passes validation and the stored schema', () => {
+  const tools = createProgramDraftTools();
+  const entry = { id: 'leg-press', name: 'Leg Press', muscleGroup: 'quadriceps' as const, equipment: 'machine' as const, bodyweight: false };
+  const template = tools.newTemplate('Legs');
+  const program = { rotation: [{ ...template, exercises: [tools.newExercise(template.id, entry)] }] };
+  expect(validateProgramDraft({ weeklySessionTarget: 3, trainingProgram: program }).valid).toBe(true);
+  expect(trainingProgramSchema.safeParse(program).success).toBe(true);
 });
