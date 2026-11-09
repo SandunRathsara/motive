@@ -12,7 +12,7 @@ The goal is the entire spec implemented on a single **integration branch**, with
 
 The tickets are not a list of steps. They are a **task graph** with blocking relationships between them. This means there is always a **frontier** of tickets which are ready to be grabbed.
 
-Start every subagent with a fresh context window using gpt-6.1-sol model on xhigh effort from openai provider.
+Start every subagent with a fresh context window using sonet 5.5 model on high effort from claude agent provider.
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
