@@ -176,5 +176,7 @@ describe('exposed to later slices', () => {
     expect(week).toMatchObject({ completedSessions: 2, workingSets: 5, volumeKg: 60 * 10 * 3 + 40 * 10 * 2 });
     expect(week.sessions.map((entry) => entry.templateName)).toEqual(['Push', 'Pull']);
     expect(week.setsByMuscleGroup).toEqual([{ muscleGroup: 'chest', sets: 3 }, { muscleGroup: 'back', sets: 2 }]);
+    expect(week.sessions[1].sets.map(({ exerciseId, type, index, loadKg, reps }) => ({ exerciseId, type, index, loadKg, reps })))
+      .toEqual([{ exerciseId: 'lat-pulldown', type: 'working', index: 0, loadKg: 40, reps: 10 }, { exerciseId: 'lat-pulldown', type: 'working', index: 1, loadKg: 40, reps: 10 }]);
   });
 });

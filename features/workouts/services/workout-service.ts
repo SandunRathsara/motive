@@ -465,7 +465,7 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
     const perSession = sessions.map((session) => ({
       sessionId: session.id, templateId: session.templateId, templateName: session.prescription.templateName,
       startedAt: session.startedAt, day: dayKey(session.startedAt, offsetAt),
-      completed: session.completed, deload: session.deload, ...summarizeSession(session, getExerciseById),
+      completed: session.completed, deload: session.deload, ...summarizeSession(session, getExerciseById), sets: session.sets,
     }));
     const total = summarizeSession({ sets: sessions.flatMap((session) => session.sets) }, getExerciseById);
     return { from, to: at, completedSessions: sessions.filter((session) => session.completed).length, ...total, sessions: perSession };
