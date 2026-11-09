@@ -82,6 +82,15 @@ describe('chips (S3)', () => {
     expect(failed).toMatchObject({ saveState: 'failed', setId: null, loadKg: 80, reps: 9 });
   });
 
+  test('a draft made after a failed commit replaces the failed values; while saving the committed values stay shown', () => {
+    const base = detail({ squatHistory: [history([[80, 8], [80, 8], [80, 8]])] });
+    const draft = { 'sq:0': { loadKg: 82.5, reps: 7 } };
+    const failed = card(buildActiveSession(base, { ...idle, drafts: draft, pending: { 'sq:0': { status: 'failed', loadKg: 80, reps: 9 } } }), 'sq').chips[0];
+    const saving = card(buildActiveSession(base, { ...idle, drafts: draft, pending: { 'sq:0': { status: 'saving', loadKg: 80, reps: 9 } } }), 'sq').chips[0];
+    expect(failed).toMatchObject({ saveState: 'failed', loadKg: 82.5, reps: 7, recommended: false });
+    expect(saving).toMatchObject({ saveState: 'saving', loadKg: 80, reps: 9 });
+  });
+
   test('a saved set is marked Failed Set only below the range at the recommended load', () => {
     const sets = [entry('a', squat, 0, 80, 5), entry('b', squat, 1, 70, 5), entry('c', squat, 2, 80, 8)];
     const chips = card(buildActiveSession(detail({ squatHistory: [history([[80, 8], [80, 8], [80, 8]])], sets }), idle), 'sq').chips;

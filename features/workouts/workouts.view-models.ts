@@ -157,7 +157,9 @@ function buildChips(
     // Unlogged slot. Only the first one past the prescribed sets is offered.
     const key = chipKey(templateExercise.id, slot);
     const rec = kind === 'working' ? recommended?.[slot] ?? null : null;
-    const draft = ui.pending[key] ?? ui.drafts[key];
+    // What is being saved stays as committed; after a failure, a newer stepper draft wins so the retry logs it.
+    const pending = ui.pending[key];
+    const draft = pending?.status === 'saving' ? pending : ui.drafts[key] ?? pending;
     // No recommendation: reps start at the bottom of the range (D3); later sets copy the first load.
     const base: ChipDraft = rec
       ? { loadKg: rec.loadKg, reps: rec.reps }
