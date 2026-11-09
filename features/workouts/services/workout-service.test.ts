@@ -127,3 +127,16 @@ describe('Today read', () => {
     expect(today.active?.sets).toHaveLength(1);
   });
 });
+
+describe('record lifecycle', () => {
+  test('writes are refused with a typed error while the record is being erased, and nothing is saved', async () => {
+    const { startSession, logSet } = service();
+    const session = await startSession('full-body');
+    useRecordLifecycle.setState({ phase: 'erasing' });
+    await expect(logSet({ sessionId: session.id, templateExerciseId: squat, loadKg: 80, reps: 8, durationMs: 1 })).rejects.toMatchObject({ code: 'recordWritesBlocked' });
+    await expect(startSession('full-body')).rejects.toMatchObject({ code: 'recordWritesBlocked' });
+    useRecordLifecycle.setState({ phase: 'ready' });
+    expect((await createWorkoutRepository(db).listSets()).rows).toHaveLength(0);
+    expect(recorded).toEqual([]);
+  });
+});
