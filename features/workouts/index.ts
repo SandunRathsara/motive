@@ -1,3 +1,4 @@
+import { workoutService } from './services/workout-service';
 export { exerciseLibraryEntrySchema, templateExerciseSchema, sessionTemplateSchema, trainingProgramSchema } from './workouts.schemas';
 export type { ExerciseLibraryEntry, TemplateExercise, SessionTemplate, TrainingProgram } from './workouts.schemas';
 export {
@@ -31,9 +32,13 @@ export {
 export type { SetTimer } from './workouts.timing';
 
 // ---- Slice 5: service, hooks, view models and exposed-to-later-slices functions ----
-export { createWorkoutService, workoutService } from './services/workout-service';
+export { workoutService };
 export type { WorkoutService, WorkoutServiceOptions, LogSetInput, EditSetInput, UndoToken, ProgramState } from './services/workout-service';
-export { getClosedWeekCounts, getStallHistory, getProgramCreatedAt, getLastSevenDays, startDeloadSession, onWeeklyTargetEdited } from './services/later-slices';
+/** Plain functions for later slices (training review in slice 6, Coaching Context in slice 11); they read the local record only. */
+export const {
+  closedWeekCounts: getClosedWeekCounts, stallHistory: getStallHistory, programCreatedAt: getProgramCreatedAt,
+  lastSevenDays: getLastSevenDays, startDeloadSession, onWeeklyTargetEdited,
+} = workoutService;
 export { workoutKeys } from './hooks/query-keys';
 export { useTodayTraining } from './hooks/useTodayTraining';
 export { useTrainingWeek } from './hooks/useTrainingWeek';
@@ -48,7 +53,7 @@ export type { TrainingSettingsViewModel } from './hooks/useTrainingSettings';
 export { useUndo } from './hooks/useUndo';
 export type { UndoOffer } from './workouts.undo';
 export { defaultRestSeconds } from './workouts.history';
-export { defaultIncrementKg, newTemplateExercise, blankTemplate, validateProgramDraft, createProgramDraftTools, programDraftTools } from './workouts.program';
+export { validateProgramDraft, programDraftTools } from './workouts.program';
 export type { ProgramDraft, ProgramDraftValidation, ProgramDraftTools } from './workouts.program';
 export { formatKg, formatSet, formatNumber } from './workouts.format';
 export { workoutErrorText } from './workouts.view-models';

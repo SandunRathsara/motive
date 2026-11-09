@@ -471,6 +471,9 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
     return { from, to: at, completedSessions: sessions.filter((session) => session.completed).length, ...total, sessions: perSession };
   }
 
+  /** Starts a Deload session: same recommended loads, working sets halved per exercise (rounded up); excluded from progression (slice 6). */
+  const startDeloadSession = (templateId: string) => startSession(templateId, { deload: true });
+
   /** Fires when the user edits the weekly target, for Plan Change supersession (PLAN-3). */
   function onWeeklyTargetEdited(listener: (event: { from: number | null; to: number; versionNumber: number }) => void): () => void {
     return planStore.subscribe((result) => {
@@ -480,7 +483,7 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
   }
 
   return {
-    startSession, logSet, editSet, deleteSet, finishSession, deleteSession, undo, saveProgram,
+    startSession, startDeloadSession, logSet, editSet, deleteSet, finishSession, deleteSession, undo, saveProgram,
     readProgram, readToday, readOverview, readSession, readSummary, readExerciseHistory,
     programCreatedAt, closedWeekCounts, stallHistory, lastSevenDays, onWeeklyTargetEdited,
   };

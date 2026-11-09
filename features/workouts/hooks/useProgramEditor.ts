@@ -50,5 +50,5 @@ export function useProgramEditor() {
       return { saved: true, changed: result.version !== null };
     } catch { return { saved: false, validation: null }; }
   }, [mutation]);
-  return { model, save, validate: validateProgramDraft, saving: mutation.isPending, errorText: workoutErrorText(mutation.error) };
+  return { model, save, saving: mutation.isPending, errorText: workoutErrorText(mutation.error) };
 }

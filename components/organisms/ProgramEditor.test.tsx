@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type {
   ExerciseLibraryEntry, ProgramDraft, ProgramDraftTools, ProgramDraftValidation, SaveProgramResult, SessionTemplate,
 } from '@/features/workouts';
+import { programTools } from './__fixtures__/program-tools';
 import { ProgramEditor } from './ProgramEditor';
 
 const library: ExerciseLibraryEntry[] = [
@@ -27,15 +28,10 @@ const upper: SessionTemplate = {
 };
 const draft: ProgramDraft = { weeklySessionTarget: 3, trainingProgram: { rotation: [full, upper] } };
 
-const tools: ProgramDraftTools = {
-  newTemplate: (name) => ({ id: 'template-new', name, exercises: [] }),
-  newExercise: (templateId, exercise) => ({
-    id: `${templateId}-${exercise.id}-new`, exerciseId: exercise.id, workingSets: 3, repRange: { min: 8, max: 12 }, incrementKg: 2.5,
-  }),
-};
+const tools: ProgramDraftTools = { ...programTools, validate: (value) => validate(value) };
 
 /** A stand-in for the feature's validator covering the rules these tests exercise. */
-const validate = (value: ProgramDraft): ProgramDraftValidation => {
+function validate(value: ProgramDraft): ProgramDraftValidation {
   const errors: Record<string, string> = {};
   value.trainingProgram.rotation.forEach((template, ti) => {
     if (!template.name.trim()) errors[`templates.${ti}.name`] = 'Name this template';
@@ -43,14 +39,14 @@ const validate = (value: ProgramDraft): ProgramDraftValidation => {
   });
   if (value.trainingProgram.rotation.length === 0) errors.rotation = 'Add at least one Session Template';
   return { valid: Object.keys(errors).length === 0, errors };
-};
+}
 
 const model = { status: 'ready' as const, versionLabel: 'Plan v3', draft, library, weeklyTargetOptions: [1, 2, 3, 4, 5, 6] };
 
 function setup(overrides: Partial<Parameters<typeof ProgramEditor>[0]> = {}) {
   const onSave = jest.fn(async (): Promise<SaveProgramResult> => ({ saved: true, changed: true }));
   const onSaved = jest.fn();
-  const props = { model, defaultRestSeconds: 90, tools, validate, onSave, onSaved, ...overrides };
+  const props = { model, defaultRestSeconds: 90, tools, onSave, onSaved, ...overrides };
   return { onSave, onSaved, ui: <ProgramEditor {...props} /> };
 }
 const saved = (onSave: jest.Mock): ProgramDraft => onSave.mock.calls[0][0];
