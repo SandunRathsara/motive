@@ -3,6 +3,11 @@ export type { ExerciseLibraryEntry, TemplateExercise, SessionTemplate, TrainingP
 export { exerciseLibrary, exerciseLibraryVersion, getExerciseById, starterSessionTemplate, starterTrainingProgram } from './workouts.content';
 export { readExerciseLibrary, WorkoutsError } from './services/exercise-library-repository';
 export { exerciseLibraryExportSection } from './services/export-section';
+export { computeProgression } from './workouts.progression';
+export type {
+  ActualSet, LoadReset, ProgressionOutcome, ProgressionPrescription, ProgressionResult, ProgressionSession, ProgressionSet,
+  RecommendedSet, SessionProgressionEvaluation, StallEvent, StallKind, StallState,
+} from './workouts.progression';
 export { isSessionCompleted, trainingWeekBounds, sessionAttribution, completedCountsByWeek, completedInWeek, nextTemplate } from './workouts.schedule';
 export type { ScheduleSession, TrainingWeek } from './workouts.schedule';
 export { summarizeSession, previousCompletedSession, compareWithPrevious, nextTimeLine } from './workouts.summary';
