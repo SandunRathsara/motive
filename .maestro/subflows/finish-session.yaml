@@ -1,0 +1,11 @@
+appId: dev.motive.app
+---
+# Finish the active session and land on S5 with the one primary action pinned.
+- tapOn:
+    id: "finish-session"
+- assertVisible:
+    id: "session-summary"
+- assertVisible: "Volume"
+- assertVisible: "3 working sets"
+- assertVisible: "Counts toward your weekly target"
+- assertVisible: "Done"

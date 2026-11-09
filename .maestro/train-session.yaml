@@ -1,0 +1,41 @@
+appId: dev.motive.app
+---
+# (b) start → log → undo → finish → summary, on a fresh install (no history, so the first
+# set needs its load stepped in; later flows cover Recommended Sets).
+- launchApp:
+    clearState: true
+- runFlow: subflows/onboard.yaml
+# Start: Today's always-visible Set control starts the next template when nothing is active.
+- assertVisible:
+    id: "quick-add-set"
+- tapOn:
+    id: "quick-add-set"
+- assertVisible:
+    id: "active-session"
+- assertVisible: "0 of 14 sets"
+- assertVisible:
+    id: "next-set-chip"
+    text: "Load not set, 6 reps"
+# Log one set at 20 kg, then undo it within the 5 s window (no confirmation dialog).
+- repeat:
+    times: 8
+    commands:
+      - tapOn: "Increase load by 2.5 kilograms"
+- tapOn:
+    id: "next-set-chip"
+- tapOn:
+    id: "undo-button"
+- assertNotVisible:
+    id: "undo-button"
+- assertVisible: "0 of 14 sets"
+- assertNotVisible: "1 of 14 sets"
+# The undone set is gone entirely; log the three squat sets for real, then finish.
+- runFlow: subflows/log-three-squat-sets.yaml
+- runFlow: subflows/finish-session.yaml
+# Done returns to where the session started: Today, with the next session offered.
+- tapOn: "Done"
+- assertVisible:
+    id: "today-training-action"
+    text: "Start Full Body"
+- assertNotVisible:
+    id: "undo-button"

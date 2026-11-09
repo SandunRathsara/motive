@@ -1,0 +1,37 @@
+appId: dev.motive.app
+---
+# (c) The training loop with no network. The simulator cannot toggle airplane mode (no simctl or
+# Maestro control, and cutting the host's network would affect the whole machine), so this is the
+# closest faithful approximation: the whole loop runs on-device against local SQLite only, through
+# a different entry (Train tab) than (b), including undo and a relaunch that re-reads everything.
+# Network silence while it runs is checked outside Maestro; see README "Slice 5 training logging".
+- launchApp:
+    clearState: true
+- runFlow: subflows/onboard.yaml
+- tapOn:
+    id: "tab-train"
+- assertVisible: "Start Full Body"
+- tapOn: "Start Full Body"
+- assertVisible:
+    id: "active-session"
+- runFlow: subflows/log-three-squat-sets.yaml
+# Undo the set just logged (still inside its 5 s window), then log it again.
+- tapOn:
+    id: "undo-button"
+- assertVisible: "2 of 14 sets"
+- tapOn:
+    id: "next-set-chip"
+- assertVisible: "3 of 14 sets"
+- runFlow: subflows/finish-session.yaml
+# Done returns to Train, the tab the session started from; the finished session is listed.
+- tapOn: "Done"
+- assertVisible:
+    text: "Full Body, .*, 3 sets · 360 kg, Finished"
+- assertVisible: "1 of 4 sessions"
+# Relaunch: everything above is re-read from the local record.
+- launchApp
+- tapOn:
+    id: "tab-train"
+- assertVisible:
+    text: "Full Body, .*, 3 sets · 360 kg, Finished"
+- assertVisible: "1 of 4 sessions"
