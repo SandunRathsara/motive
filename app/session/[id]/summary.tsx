@@ -9,9 +9,10 @@ export default function SessionSummaryRoute() {
   const undo = useUndo();
   // Back to the tab the session was opened from; the undo toast waits there.
   const done = () => { if (router.canGoBack()) router.dismissAll(); else router.replace('/train'); };
+  const deleteSession = async () => { if (await summary.deleteSession()) done(); };
   return <SessionSummaryTemplate model={summary.model} errorText={summary.errorText}
     undo={{ offer: undo.offer, errorText: undo.errorText, onUndo: () => { void undo.undo(); } }}
     onDone={done}
     onEditSets={() => router.push({ pathname: '/session/[id]', params: { id } })}
-    onDeleteSession={() => { void summary.deleteSession().then((deleted) => { if (deleted) done(); }); }} />;
+    onDeleteSession={() => { void deleteSession(); }} />;
 }
