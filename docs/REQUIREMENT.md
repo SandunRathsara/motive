@@ -138,11 +138,13 @@ _Decided in: [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara
   - Any template can be started, and the rotation continues from the template actually done. A missed day shifts the rotation; it never skips or orphans a session.
   - A session counts as completed, for the rotation and the weekly target, when it is finished with at least one working set.
   - **Other Activity** never counts (SIG-9).
+  - A session belongs to the day and training week of its start. An active session never auto-finishes.
+  - If the last completed session's template is no longer in the rotation, the next template is the first in rotation order.
 - **TRN-3** **Active session:** Start opens the session with an elapsed timer and the first exercise expanded. Each working set shows a chip:
   - The main value is the **Recommended Set**; last session's actual set is secondary text ("last 80 × 9").
-  - One tap logs the chip as shown. A toast offers one-tap undo.
+  - One tap logs the chip as shown. A toast offers one-tap undo for 5 s, for a set log, a set delete and a session delete. There is no confirmation dialog.
   - Steppers adjust load by the exercise's increment and reps by ±1, before or after saving (after saving, it's an edit). A long-press opens direct entry.
-  - On an exercise's first session there is no Recommended Set. The first load is set with the steppers or a long-press, and later sets copy it.
+  - On an exercise's first session there is no Recommended Set. Reps start at the bottom of the range. The first load is set with the steppers or a long-press, and later sets copy it.
   - Bodyweight exercises take reps only.
 - **TRN-4** **Set types:** only **working** and **warmup**.
   - Warmups are optional, get no recommendation, and are excluded from volume and progression.
@@ -152,19 +154,27 @@ _Decided in: [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara
   - **Progress:** every prescribed working set, logged at or above the recommended load, reaches the top of the rep range. The next session adds one increment and resets reps to the bottom of the range.
   - **Otherwise:** the same load, with last session's reps for that set + 1, capped at the top of the range.
   - Only sets logged at or above the recommended load count toward progression.
-  - **Default increments** are editable per exercise: barbell 2.5 kg, dumbbell 2 kg, machine or cable 5 kg.
+  - **Incomplete sessions:** Progress needs every prescribed working set logged. A prescribed set that was not logged keeps its previous Recommended Set, with no +1.
+  - **Reference load:** progression builds on the recommended load, never on a heavier actual load. On an exercise's first use, the reference load is the first prescribed working set's logged load.
+  - **Default increments** are editable per exercise and stored on the Template Exercise: barbell 2.5 kg, dumbbell 2 kg, machine or cable 5 kg.
   - **Bodyweight** exercises progress by reps only and stay at the top of the range once they reach it. Added load isn't offered.
   - Changing a template exercise's rep range keeps its last load and moves reps to the new bottom. Swapping in a different exercise starts it with no history.
 - **TRN-6** **Failed Set, Stall and Load Reset:**
   - A **Failed Set** (below the bottom of its range at the recommended load) is recorded as it happened, without judgment. The next session repeats the same load.
   - A **Stall** is 2 sessions in a row with a Failed Set, or 3 in a row with no rep gain at the same load.
+    - **No rep gain** compares total reps across the prescribed working sets at the recommended load: 3 consecutive sessions at the same recommended load where each of the last two totals is ≤ the previous session's total.
+    - Bodyweight exercises record Failed Sets but never Stall or Load Reset.
+    - Stall counters restart after a Load Reset; the reset session is the first of a new count.
   - After a Stall, the next Recommended Set is a **Load Reset**: about −10% rounded down to the increment, reps back to the bottom of the range, and one reason line ("Reset after 2 sessions under 6 reps"). A Load Reset is part of the progression rule, never a Plan Change.
-- **TRN-7** **Rest timer:** starts automatically when a set is saved (default 90 s, overridable per exercise). It is a non-blocking bar at the bottom with +30 s and Skip. Logging continues during rest.
-- **TRN-8** **Session summary:** volume from working sets, sets per muscle group, a comparison with the last session of that template, and one deterministic "next time" line built from progression outcomes ("Bench moves to 82.5 × 6; Row repeats 60 kg after 1 Failed Set"). It is computed offline. The AI Coach does not generate it.
+- **TRN-7** **Rest timer:** starts automatically when a set is saved (default 90 s, overridable per exercise; the override is stored on the Template Exercise). It is a non-blocking bar at the bottom with +30 s and Skip. Logging continues during rest.
+- **TRN-8** **Session summary:** volume (kg) from working sets, summing load × reps of loaded sets only; bodyweight working sets count toward sets per muscle group and a separate reps total. Also sets per muscle group, a comparison with the last session of that template, and one deterministic "next time" line built from progression outcomes ("Bench moves to 82.5 × 6; Row repeats 60 kg after 1 Failed Set"). It is computed offline. The AI Coach does not generate it.
 - **TRN-9** **Edits:**
   - Sets can be edited mid-session without leaving the screen. Sessions are editable and deletable.
   - Recommended Sets and Stall state are computed when a session finishes, and recomputed immediately when past sets are edited or deleted.
   - Evidence Snapshots already proposed stay frozen.
+  - Editable on a session: its sets (add, edit, retype, delete) and the session itself (delete). Its template and start/end times are not editable in Phase 1.
+  - During an active session the prescription stays frozen at start (PLAN-7), but unlogged sets' Recommended Sets refresh after a past-session edit.
+  - Deleting a Session Template keeps its sessions and set history, which still appear in exercise history and recent sessions. Re-adding the same exercise creates a new Template Exercise with no progression history.
 - **TRN-10** **Training review** runs at the first app open after a training week closes, after the Health refresh on open has been attempted. It runs offline from the Personal Health Record. Skipped reviews aren't replayed. It evaluates the two training Plan Change rules:
   - **Frequency Change:**
     - Proposes target − 1 when completed sessions fell short of the target in each of the last 3 closed weeks, and target + 1 when they exceeded it in each of the last 3.
@@ -177,10 +187,10 @@ _Decided in: [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara
     - There are no scheduled, periodic or user-started deloads.
   - Motive never swaps exercises, adds sets or changes rep ranges automatically.
 - **TRN-11** **Health Signals have no authority over training.** Sleep, HRV and resting HR never change a Recommended Set and never trigger or contribute to a training Plan Change. They appear only as context (SIG-10, COACH-2, Evidence Snapshots labelled "not used in the decision").
-- **TRN-12** The user's own edits to the Training Program or its templates take effect immediately as a Plan Version with the source *Your edit* (PLAN-5). They are not Plan Changes.
+- **TRN-12** The user's own edits to the Training Program or its templates take effect immediately as a Plan Version with the source *Your edit* (PLAN-5). They are not Plan Changes. Each Save in the program editor creates one Plan Version, with none if nothing changed.
 - **TRN-13** All of training works offline.
 
-_Decided in: [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
+_Decided in: [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22); [Slice 5: Training logging](https://github.com/SandunRathsara/motive/issues/23)._
 
 ### 5.4 Food capture (FOOD)
 
@@ -333,6 +343,9 @@ _Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/moti
   - A Health workout links to a Motive session when their windows overlap by **≥ 50% of the shorter one**, whatever the workout type. If several qualify, the largest overlap is linked; the rest become **Other Activity**.
   - Motive's sets and start/end times are authoritative; a linked workout adds context only.
   - Other Activity is shown as context and never adds volume or completes a session.
+  - Other Activity is any Health workout linked to no session, including qualifying but non-largest overlaps.
+  - One workout qualifying for two sessions links one-to-one, assigned greedily by overlap size descending (ties: earlier session start).
+  - Links are derived on read, with no stored state.
   - There is no "use Watch duration?" prompt and no manual link or unlink.
 - **SIG-10** **Signal Baseline and the Today trend line:**
   - **Last 7** includes today when known.
@@ -346,7 +359,7 @@ _Decided in: [Nutrition adaptation rules](https://github.com/SandunRathsara/moti
 - **SIG-11** **Signals screen (S10):** opened from the **Health Signals** row in Settings. Shows weight and Trend Weight, sleep, resting HR, HRV and linked workouts or Other Activity. Each has a 14-day sparkline, its Signal Baseline where defined, its per-type status and the last-synced time. Pull-to-refresh syncs.
 - **SIG-12** **Excluding a signal:** it is turned off in Apple Health's permissions, not in Motive. Cached history is kept and ages out of today-scoped values and trends through SIG-8 and the window rules. **Delete this signal's history** purges the cached type and resets its anchor. Empty reads leave the reset anchor null; restoring access re-imports the full backfill window. The confirmation states that Apple Health keeps its own data: turn off access in Apple Health first, or the next sync reads the history again.
 
-_Decided in: [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6); [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2); [Slice 3: Health Signals](https://github.com/SandunRathsara/motive/issues/21)._
+_Decided in: [Health signal read set and provenance policy](https://github.com/SandunRathsara/motive/issues/6); [Training adaptation and readiness rules](https://github.com/SandunRathsara/motive/issues/11); [HealthKit integration approach for Expo](https://github.com/SandunRathsara/motive/issues/2); [Slice 3: Health Signals](https://github.com/SandunRathsara/motive/issues/21); [Slice 5: Training logging](https://github.com/SandunRathsara/motive/issues/23)._
 
 ### 5.7 Plan Changes and Plan Versions (PLAN)
 
@@ -378,7 +391,7 @@ _Decided in: [Health signal read set and provenance policy](https://github.com/S
   - Any version that changes nutrition targets resets the 7-day nutrition review clock. A training-only version doesn't.
 - **PLAN-7** **Taking effect:**
   - **Nutrition** changes apply immediately, including to today's rings and today's 50% probably-incomplete check.
-  - **Training** changes apply from the next session started. A session in progress never changes. A Frequency Change doesn't reset the current week's count, and the new target is judged from the next closed week.
+  - **Training** changes apply from the next session started. A session in progress never changes: its prescription is frozen at start. A Frequency Change doesn't reset the current week's count, and the new target is judged from the next closed week.
   - A pending proposal affects nothing.
 - **PLAN-8** **Revert:**
   - Available for 7 days after Apply, or until a later Plan Version changes the same field, whichever comes first.
@@ -399,7 +412,7 @@ _Decided in: [Health signal read set and provenance policy](https://github.com/S
   - If the user wants a different value, it points to editing it in Settings, and it never offers its own number to apply.
   - Prose that contradicts the Plan Change's numbers fails validation, and the deterministic explanation is shown instead (AI-1).
 
-_Decided in: [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22)._
+_Decided in: [Plan Change lifecycle](https://github.com/SandunRathsara/motive/issues/12); [Slice 4: Onboarding and Plan v1](https://github.com/SandunRathsara/motive/issues/22); [Slice 5: Training logging](https://github.com/SandunRathsara/motive/issues/23)._
 
 ### 5.8 AI Coach (COACH)
 
@@ -526,9 +539,11 @@ The entities below are indicative. Exact schemas are defined by each slice spec 
 - **Plan Change:** number, kind (kcal / protein / Frequency Change / Deload), direction, state, before and after values, Evidence Snapshot, created at and resolved at.
 - **Nutrition review:** date, raw and smoothed Expenditure Estimate or insufficiency with its shortfall, and whether the Under-Floor Signal was raised.
 - **Exercise** (built-in library): name, muscle group, equipment, bodyweight flag.
-- **Training Program / Session Template / Template Exercise:** rotation order; working-set count, rep range, load increment; progression state per template exercise.
-- **Workout Session:** template, started at, ended at, completed, Deload flag, linked Health workout.
-- **Set Entry:** session, exercise, index, type (working / warmup), load kg, reps, committed at.
+- **Training Program / Session Template / Template Exercise:** rotation order; working-set count, rep range, load increment and optional rest override on each Template Exercise; progression cache per Template Exercise (Recommended Sets, Stall counters, source session IDs), rebuildable from history.
+- **Workout Session:** template, started at, ended at (null while active), completed, Deload flag (default false), prescription snapshot taken at start. The linked Health workout is derived on read (SIG-9), not stored.
+- **Set Entry:** session, Template Exercise, exercise, index, type (working / warmup), load kg (null for bodyweight), reps, committed at, edited at.
+
+_Decided in: [Slice 5: Training logging](https://github.com/SandunRathsara/motive/issues/23)._
 - **Food Draft:** capture type, sentence or caption, photo reference, meal time, revision, recognition state, grounded line items.
 - **Food Entry / Food Item:** day, Meal Slot, meal time, provenance (FOOD-10), items with portion, assumptions, user-edited flag, FDC snapshot, up to 3 alternatives.
 - **Logged Day status:** day, user mark (not fully logged / confirmed complete), probably-incomplete flag.
@@ -594,7 +609,7 @@ Everything else is non-critical. A crash that can't be reproduced is non-critica
 - [ ] Maestro critical flows assert their exact step counts, including a repeat set in ≤ 3 taps with no keyboard.
 - [ ] Dogfood medians: repeat set ≤ 5 s; photo meal ≤ 15 s of Active Input Time; sentence meal ≤ 10 s with ≤ 1 correction.
   - Sets edited after saving, and drafts left and resumed later, are counted but excluded from the medians.
-  - The set timer runs from the chip becoming actionable to the commit, excluding rest.
+  - The set timer runs to the commit from the later of the chip becoming actionable and the end or Skip of rest. If the set is logged during rest, it starts at the first touch after the previous commit. Backgrounded time is excluded.
 - [ ] Recognition wait on the device: p50 ≤ 8 s and p95 ≤ 20 s from at least 20 real captures.
 - [ ] Reported, not gated: p90 for each target, online capture-to-confirmed (Active Input Time + recognition wait), and daily input total (UX-6).
 
@@ -629,7 +644,7 @@ Everything else is non-critical. A crash that can't be reproduced is non-critica
 - [ ] **Safety:** the Warning Sign true/false-positive fixture set passes on the device.
 - [ ] No open Critical Defects.
 
-_Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRathsara/motive/issues/13)._
+_Decided in: [Phase 1 Completion Gate measurement](https://github.com/SandunRathsara/motive/issues/13); [Slice 5: Training logging](https://github.com/SandunRathsara/motive/issues/23)._
 
 ## 11. Open decisions
 

@@ -105,6 +105,7 @@ Additional rules:
 
 - Cross-feature imports must use an explicitly exported public contract. If sharing becomes bidirectional, extract the shared contract to `/lib/contracts` rather than create a cycle.
 - Nutrition, workouts and onboarding use the `plan` public contract. The `plan` feature imports none of them ([Slice 4](https://github.com/SandunRathsara/motive/issues/22)).
+- Workout progression rules must not import `features/health` (TRN-11). Workout linking (SIG-9) may use health's public contract ([Slice 5](https://github.com/SandunRathsara/motive/issues/23)).
 - `lib/contracts/training-program.ts` owns the shared persisted program/template schemas used by plan and workouts; workouts retains bundled-content ownership and re-exports these schemas. `lib/contracts/stored-json.ts` validates JSON storage syntax before feature schemas validate its shape.
 - `lib/contracts/nutrition-inputs.ts` owns the shared Goal/preset and Profile input-bound constants consumed by nutrition, profile and plan. Nutrition re-exports them; plan never imports nutrition, and profile and nutrition do not depend on each other for input definitions.
 - UI calls feature hooks or service contracts, never concrete backend/native adapters.

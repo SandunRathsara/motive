@@ -49,7 +49,7 @@ The source, sample time, and entry method (device-measured or user-entered) of a
 _Avoid_: origin, device
 
 **Other Activity**:
-A workout recorded in Apple Health that overlaps no session logged in Motive. It is shown as context and never counts as training volume or as a completed planned session.
+A workout recorded in Apple Health that is linked to no session logged in Motive, including one that qualifies for a session but is not its largest overlap. It is shown as context and never counts as training volume or as a completed planned session.
 _Avoid_: unlogged session, external workout
 
 **Food Draft**:
