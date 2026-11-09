@@ -115,3 +115,15 @@ describe('log set', () => {
     expect([warmup.set.type, warmup.set.index, working.set.type, working.set.index]).toEqual(['warmup', 0, 'working', 1]);
   });
 });
+
+describe('Today read', () => {
+  test('offers Start of the first template, then Resume of the active session with its sets', async () => {
+    const { startSession, logSet, readToday } = service();
+    expect(await readToday()).toMatchObject({ active: null, next: { id: 'full-body' } });
+    const session = await startSession('full-body');
+    await logSet({ sessionId: session.id, templateExerciseId: squat, loadKg: 80, reps: 8, durationMs: 1 });
+    const today = await readToday();
+    expect(today.active?.id).toBe(session.id);
+    expect(today.active?.sets).toHaveLength(1);
+  });
+});

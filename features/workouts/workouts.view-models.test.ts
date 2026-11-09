@@ -3,7 +3,7 @@ import { computeProgression, type ProgressionSession } from './workouts.progress
 import { progressionPrescription } from './workouts.history';
 import type { SetEntry, TemplateExercise, WorkoutSession } from './workouts.schemas';
 import {
-  buildActiveSession, buildExerciseHistory, buildSessionSummary, buildSetSheet, buildTodayTraining, buildTrainingWeek,
+  buildActiveSession, buildExerciseHistory, buildSessionSummary, buildSetSheet, buildTodayTraining, buildTrainingWeek, workoutErrorText,
   type SessionDetailInput, type SessionUiState,
 } from './workouts.view-models';
 
@@ -249,5 +249,14 @@ describe('Exercise history', () => {
       { sessionId: 'b', templateName: 'Full Body', dateText: 'Mon 9 Nov', setsText: '80 × 10, 80 × 9', warmupText: 'Warmup 40 × 10' },
       { sessionId: 'a', templateName: 'Lower', dateText: 'Mon 2 Nov', setsText: 'Warmups only', warmupText: 'Warmup 12 reps' },
     ]);
+  });
+});
+
+describe('error copy', () => {
+  test('maps typed codes to calm text and stays silent without an error', () => {
+    expect(workoutErrorText(null)).toBeUndefined();
+    expect(workoutErrorText({ code: 'writeFailed' })).toBe('Not saved. Nothing was changed. Try again.');
+    expect(workoutErrorText({ code: 'activeSessionExists' })).toBe('A session is already in progress. Resume it or finish it first.');
+    expect(workoutErrorText(new Error('anything else'))).toBe('Not saved. Nothing was changed. Try again.');
   });
 });

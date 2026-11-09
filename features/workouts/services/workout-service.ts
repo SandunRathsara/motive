@@ -331,6 +331,16 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
     return readPlan(options.connection);
   }
 
+  /** The cheap read behind Today's Start/Resume and the Set quick-add (no Health lookup). */
+  async function readToday() {
+    const plan = await readPlan(options.connection);
+    const sessions = await loadSessions(repository());
+    return {
+      active: sessions.find((session) => session.endedAt === null) ?? null,
+      next: nextTemplate<SessionTemplate>(plan.state.trainingProgram.rotation, sessions),
+    };
+  }
+
   async function linking(sessions: readonly WorkoutSession[], from: number, to: number, at: number): Promise<WorkoutLinking<HealthWorkout> & { workouts: HealthWorkout[] }> {
     const workouts = await healthWorkouts({ from, to }, at);
     return { ...linkWorkouts(sessions, workouts, at), workouts };
@@ -471,8 +481,11 @@ export function createWorkoutService(options: WorkoutServiceOptions = {}) {
 
   return {
     startSession, logSet, editSet, deleteSet, finishSession, deleteSession, undo, saveProgram,
-    readProgram, readOverview, readSession, readSummary, readExerciseHistory,
+    readProgram, readToday, readOverview, readSession, readSummary, readExerciseHistory,
     programCreatedAt, closedWeekCounts, stallHistory, lastSevenDays, onWeeklyTargetEdited,
   };
 }
 export type WorkoutService = ReturnType<typeof createWorkoutService>;
+
+/** The app-wide service over the open record. */
+export const workoutService = createWorkoutService();

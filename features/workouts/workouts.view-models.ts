@@ -512,3 +512,19 @@ export function buildExerciseHistory(
     }),
   };
 }
+
+// ---- Calm error copy ----
+
+/** Typed errors map to short, blame-free messages (DATA-2: a failed commit is "not saved"). */
+export function workoutErrorText(error: unknown): string | undefined {
+  if (!error) return undefined;
+  const code = typeof error === 'object' && error !== null && 'code' in error ? (error as { code: unknown }).code : undefined;
+  switch (code) {
+    case 'activeSessionExists': return 'A session is already in progress. Resume it or finish it first.';
+    case 'notFound': return 'That session or set no longer exists.';
+    case 'recordWritesBlocked': return 'Saving is paused while your data is exported or erased.';
+    case 'invalidState': return "Those values can't be saved. Check them and try again.";
+    case 'readFailed': case 'invalidRows': return "Couldn't read your training log.";
+    default: return 'Not saved. Nothing was changed. Try again.';
+  }
+}
